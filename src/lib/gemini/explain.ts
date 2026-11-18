@@ -143,7 +143,7 @@ export async function explainPlan(plan: Plan, household: Household): Promise<Rec
       title: exp?.title ?? getInterventionTitle(item.id),
       whyItHelps: groundedWhy.length > 0 ? groundedWhy : cleanWhy,
       steps: cleanSteps.length >= 2 ? cleanSteps : ["Adjust daily schedule accordingly.", "Follow local air quality advisories."],
-      sustainableAlternative: cleanAlt,
+      sustainableAlternative: item.reducesOwnEmissions ? cleanAlt : undefined,
     };
   }
 

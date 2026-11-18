@@ -63,7 +63,30 @@ describe("Household Intake", () => {
 
   it("never invents conditions or members that were not mentioned", () => {
     const fixture = getDemoIntakeFixture(delhiLocation);
-    const userMember = fixture.household.members.find((m) => m.label.toLowerCase().includes("user"));
+    const userMember = fixture.household.members.find((m) => m.label.toLowerCase().includes("you"));
     expect(userMember?.sensitivities).toEqual([]);
+  });
+
+  it("normalises member labels and fills schedule gaps with assumed notes", async () => {
+    const raw = "I live with my mother";
+    const result = await intakeHousehold(raw, delhiLocation);
+
+    for (const member of result.household.members) {
+      // Must be normalised
+      expect(["You", "Mother"]).toContain(member.label);
+      // Gaps filled to exactly 1440m
+      const totalMinutes = member.windows.reduce((sum, w) => sum + w.durationMinutes, 0);
+      expect(totalMinutes).toBe(1440);
+    }
+  });
+
+  it("instructs the model never to invent unstated activities like cooking", async () => {
+    const raw = "I work from home and my mother watches TV";
+    const result = await intakeHousehold(raw, delhiLocation);
+
+    for (const member of result.household.members) {
+      const hasCooking = member.windows.some((w) => w.activity === "cooking");
+      expect(hasCooking).toBe(false);
+    }
   });
 });

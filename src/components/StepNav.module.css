@@ -1,0 +1,61 @@
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-12) 0;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: var(--space-32);
+}
+
+.stepList {
+  display: flex;
+  list-style: none;
+  gap: var(--space-16);
+  padding: 0;
+  margin: 0;
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.stepActive {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.stepCompleted {
+  color: var(--teal);
+}
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+  font-size: 0.75rem;
+  background-color: var(--paper-raised);
+}
+
+.stepActive .stepNumber {
+  background-color: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.stepCompleted .stepNumber {
+  background-color: var(--teal);
+  color: var(--paper);
+  border-color: var(--teal);
+}
+
+.separator {
+  color: var(--rule);
+}

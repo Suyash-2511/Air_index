@@ -32,6 +32,24 @@ export function getInterventionTitle(id: string): string {
 }
 
 /**
+ * Normalises household member labels for display in the UI and explanation text.
+ * Maps self-referential terms ("self", "me", "i", "user") to "You", and capitalises
+ * any other labels (e.g. "mother" -> "Mother", "child 1" -> "Child 1").
+ */
+export function normalizeMemberLabel(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "You";
+  const lower = trimmed.toLowerCase();
+  if (lower === "self" || lower === "me" || lower === "i" || lower === "user") {
+    return "You";
+  }
+  return trimmed
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+/**
  * Strips internal member IDs (e.g. member-1) and snake_case intervention IDs
  * from text shown to users, replacing them with user-facing labels and titles.
  */

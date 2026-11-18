@@ -1,0 +1,93 @@
+.pageWrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: var(--space-24) var(--space-32);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+  .pageWrapper {
+    padding: var(--space-16);
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: var(--space-16);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.siteTitle {
+  font-size: 1.75rem;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.siteSubtitle {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--space-64);
+}
+
+.loadingBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-24);
+  background-color: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  font-size: 1.0625rem;
+  color: var(--ink);
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--rule);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.errorBanner {
+  padding: var(--space-16);
+  background-color: var(--amber-soft);
+  border: 1px solid var(--amber-deep);
+  border-radius: var(--radius);
+  color: var(--amber-deep);
+  margin-bottom: var(--space-24);
+}
+
+.themeButton {
+  min-height: 44px;
+  padding: var(--space-8) var(--space-12);
+  background-color: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}

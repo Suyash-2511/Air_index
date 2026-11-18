@@ -1,0 +1,98 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.25fr);
+  gap: var(--space-48);
+  width: 100%;
+  max-width: 1280px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: var(--space-32);
+  }
+}
+
+.leftColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-32);
+}
+
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.backButton {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  font-size: 0.9375rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: var(--space-4) 0;
+  text-decoration: underline;
+}
+
+.headlineArea {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  overflow: hidden;
+}
+
+.headlineItem {
+  animation: slideUp var(--duration-reveal) var(--ease-out) both;
+}
+
+.headlineItem:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.headlineMain {
+  font-size: 2.5rem;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ink);
+}
+
+.headlineCut {
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  color: var(--teal);
+  font-weight: 600;
+}
+
+.cardsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.cardsTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.emptyCards {
+  padding: var(--space-16);
+  background-color: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterGroundedSentences, groundText } from "@/lib/gemini/grounding";
+import { filterGroundedSentences, groundText, normalizeMemberLabel } from "@/lib/gemini/grounding";
 import type { Plan } from "@/lib/interventions/rank";
 
 describe("Grounding & Number Verification", () => {
@@ -64,5 +64,22 @@ describe("Grounding & Number Verification", () => {
 
     expect(filtered).toContain("25%");
     expect(filtered).not.toContain("87%");
+  });
+
+  describe("Member Label Normalization", () => {
+    it("maps self-referential words to 'You'", () => {
+      expect(normalizeMemberLabel("self")).toBe("You");
+      expect(normalizeMemberLabel("me")).toBe("You");
+      expect(normalizeMemberLabel("I")).toBe("You");
+      expect(normalizeMemberLabel("user")).toBe("You");
+      expect(normalizeMemberLabel("SELF")).toBe("You");
+    });
+
+    it("capitalises other member labels", () => {
+      expect(normalizeMemberLabel("mother")).toBe("Mother");
+      expect(normalizeMemberLabel("father")).toBe("Father");
+      expect(normalizeMemberLabel("child 1")).toBe("Child 1");
+      expect(normalizeMemberLabel("older adult")).toBe("Older Adult");
+    });
   });
 });

@@ -1,0 +1,100 @@
+.comboboxWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.inputGroup {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-8) var(--space-16);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--ink);
+  background-color: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  transition: border-color var(--duration-short) var(--ease-out);
+}
+
+.input:focus {
+  outline: 2px solid var(--amber-deep);
+  outline-offset: 1px;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--amber-deep);
+}
+
+.spinner {
+  position: absolute;
+  right: var(--space-12);
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--rule);
+  border-top-color: var(--ink-soft);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  background-color: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  z-index: 100;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.option {
+  min-height: 44px;
+  padding: var(--space-8) var(--space-16);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-bottom: 1px solid var(--rule);
+}
+
+.option:last-child {
+  border-bottom: none;
+}
+
+.optionSelected,
+.option:hover {
+  background-color: var(--amber-soft);
+}
+
+.mainText {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 0.9375rem;
+}
+
+.secondaryText {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.error {
+  margin-top: var(--space-4);
+  font-size: 0.8125rem;
+  color: var(--amber-deep);
+}

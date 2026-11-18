@@ -93,4 +93,32 @@ describe("Plan Explainer", () => {
     expect(cleaned).not.toContain("keep_windows_closed");
     expect(cleaned).toBe("Action Keep windows closed protects Mother and You from outdoor smog.");
   });
+
+  it("omits sustainableAlternative note when reducesOwnEmissions is false", async () => {
+    // dummyPlan has keep_windows_closed with reducesOwnEmissions: false
+    const explanations = await explainPlan(dummyPlan, dummyHousehold);
+    expect(explanations.keep_windows_closed?.sustainableAlternative).toBeUndefined();
+  });
+
+  it("includes sustainableAlternative note when reducesOwnEmissions is true", async () => {
+    const planWithEmissions: Plan = {
+      baselineTotal: 300,
+      baseline: dummyPlan.baseline,
+      ranked: [
+        {
+          id: "cleaner_cooking_fuel",
+          kind: "indoor_air",
+          effort: "investment",
+          reducesOwnEmissions: true,
+          savedMicrograms: 50,
+          savedPercent: 16.7,
+          priorityScore: 50,
+          beneficiaries: [{ memberId: "member-1", savedMicrograms: 50, savedPercent: 16.7 }],
+        },
+      ],
+    };
+    const explanations = await explainPlan(planWithEmissions, dummyHousehold);
+    expect(explanations.cleaner_cooking_fuel?.sustainableAlternative).toBeDefined();
+    expect(typeof explanations.cleaner_cooking_fuel?.sustainableAlternative).toBe("string");
+  });
 });
