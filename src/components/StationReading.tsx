@@ -11,6 +11,7 @@ export interface StationReadingProps {
   livePm25?: number | undefined;
   cityName: string;
   isLive?: boolean;
+  aqi?: { value: number; category: string } | undefined;
 }
 
 function guidelineNote(pm25: number): string {
@@ -20,12 +21,13 @@ function guidelineNote(pm25: number): string {
 }
 
 /**
- * The station reading: today's outdoor PM2.5 as the bulletin's lead figure.
+ * The station reading: today's outdoor PM2.5 and AQI as the bulletin's lead figure.
  * A number is only shown once it has really loaded, never as a placeholder.
  */
-export function StationReading({ livePm25, cityName, isLive = false }: StationReadingProps) {
+export function StationReading({ livePm25, cityName, isLive = false, aqi }: StationReadingProps) {
   const reading = livePm25 === undefined ? undefined : Math.round(livePm25);
   const shown = useCountUp(reading, { delay: 850, duration: 1500 });
+  const aqiText = aqi ? `, AQI ${Math.round(aqi.value)} ${aqi.category}` : "";
 
   return (
     <div
@@ -33,7 +35,7 @@ export function StationReading({ livePm25, cityName, isLive = false }: StationRe
       role="status"
       aria-label={
         reading !== undefined
-          ? `Outdoor air now in ${cityName}: PM2.5 ${reading} micrograms per cubic metre`
+          ? `Outdoor air now in ${cityName}: PM2.5 ${reading} micrograms per cubic metre${aqiText}`
           : `Loading outdoor air for ${cityName}`
       }
     >
@@ -44,6 +46,11 @@ export function StationReading({ livePm25, cityName, isLive = false }: StationRe
       <div className={styles.facts} aria-hidden="true">
         <span className={styles.label}>{isLive ? "PM2.5 where you are now" : "PM2.5 outdoors now"}</span>
         <span className={styles.city}>{cityName}</span>
+        {aqi && (
+          <span className={styles.aqiPill}>
+            AQI {Math.round(aqi.value)} · {aqi.category}
+          </span>
+        )}
         <span className={styles.note}>
           {reading !== undefined ? guidelineNote(reading) : "Reading the air…"}
         </span>

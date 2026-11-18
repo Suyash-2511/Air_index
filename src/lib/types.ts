@@ -93,13 +93,25 @@ export const householdSchema = z.object({
 });
 export type Household = z.infer<typeof householdSchema>;
 
-/** One hour of outdoor air. All concentrations are µg/m³. */
+/** Summary of Indian National Air Quality Index (CPCB) or computed fallback. */
+export const aqiSummarySchema = z.object({
+  value: z.number().min(0).max(500),
+  category: z.string(),
+  dominantPollutant: z.string(),
+  source: z.enum(["cpcb", "computed"]),
+});
+export type AqiSummary = z.infer<typeof aqiSummarySchema>;
+
+/** One hour of outdoor air. All criteria concentrations are µg/m³; CO is mg/m³. */
 export const hourlyAirSchema = z.object({
   hour: z.number().int().min(0).max(23),
   pm25: z.number().min(0).max(2000),
   pm10: z.number().min(0).max(2000).optional(),
   no2: z.number().min(0).max(2000).optional(),
   o3: z.number().min(0).max(2000).optional(),
+  co: z.number().min(0).max(200).optional(),
+  so2: z.number().min(0).max(2000).optional(),
+  aqi: aqiSummarySchema.optional(),
   timeZoneFallback: z.boolean().optional(),
 });
 export type HourlyAir = z.infer<typeof hourlyAirSchema>;

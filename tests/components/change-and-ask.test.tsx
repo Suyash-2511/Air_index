@@ -81,6 +81,9 @@ describe("ChangeCard and AskPanel Components", () => {
 
     expect(await screen.findByText(/Yes, an N95 mask is effective/i)).toBeDefined();
     expect(screen.getByText("Wear a mask outdoors")).toBeDefined();
+    // The asked question stays visible and the field clears for the next one.
+    expect(screen.getByText(/You asked: “Should my mother wear a mask\?”/)).toBeDefined();
+    expect((screen.getByLabelText("Ask a question about your plan") as HTMLInputElement).value).toBe("");
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();

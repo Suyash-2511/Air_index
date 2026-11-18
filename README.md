@@ -62,6 +62,21 @@ Saans connects real-time atmospheric data with physical simulation and plain-lan
 **Today's routine** (`src/lib/routine/build-routine.ts`, `src/components/RoutineTimeline.tsx`):
 Saans synthesizes the 24-hour PM2.5 forecast with the household's actual daily windows to generate a chronologically ordered routine for the day. It deterministically flags the cleanest daytime block for safe ventilation or outdoor exercise, identifies severe smog peaks where homes must be sealed, and suggests protective mitigations during commutes, cooking, and sleep. Each event features actionable microgram savings, direct toggle synchronization with the intervention plan, and one-click Google Calendar integration.
 
+### Pollutants Covered & Indian National Air Quality Index (CPCB)
+
+While inhaled dose calculations focus on PM2.5 due to its primary role in deep alveolar penetration and cardiovascular morbidity, Saans tracks all six criteria pollutants defined by the Central Pollution Control Board (CPCB) under India's National Ambient Air Quality Standards (NAAQS):
+
+- **PM2.5** (Fine particulate matter): National limit $60\ \mu\text{g}/\text{m}^3$ (24-h). Vehicles, biomass burning, and coal combustion. Primary driver of personal physical dose.
+- **PM10** (Coarse particulate matter): National limit $100\ \mu\text{g}/\text{m}^3$ (24-h). Construction dust, unpaved roads, and windblown soil.
+- **NO2** (Nitrogen dioxide): National limit $80\ \mu\text{g}/\text{m}^3$ (24-h). Motor vehicles, diesel generators, and gas stoves. Airway inflammation.
+- **O3** (Ground-level ozone): National limit $100\ \mu\text{g}/\text{m}^3$ (8-h). Formed in sunlight from vehicular NO2 and VOCs. When daytime ozone exceeds $100\ \mu\text{g}/\text{m}^3$, Saans shifts recommended outdoor activities to safer hours.
+- **CO** (Carbon monoxide): National limit $2\ \text{mg}/\text{m}^3$ (8-h). Incomplete fuel combustion in petrol engines and biomass cookstoves.
+- **SO2** (Sulphur dioxide): National limit $80\ \mu\text{g}/\text{m}^3$ (24-h). Thermal power plants, oil refining, and industrial smelters.
+
+**Unit Conversions & AQI Integration**:
+- Gas concentrations provided in parts per billion (ppb) by Google Air Quality are converted at 1 atm and 25 °C via $\mu\text{g}/\text{m}^3 = (\text{ppb} \times \text{MW}) / 24.45$ for NO2 (46.01), O3 (48.00), and SO2 (64.07); and into $\text{mg}/\text{m}^3$ via $(\text{ppb} \times 28.01) / 24.45 / 1000$ for CO.
+- Saans reads India's official CPCB AQI (`ind_cpcb`) and dominant pollutant from Google Air Quality when available (`LOCAL_AQI`), and computes an exact sub-index fallback using official CPCB linear breakpoints across Good (0–50), Satisfactory (51–100), Moderate (101–200), Poor (201–300), Very poor (301–400), and Severe (401–500) bands.
+
 ## Assumptions
 
 - **Ambient Homogeneity**: Outdoor PM2.5 levels are assumed uniform across the immediate neighborhood (~1 km radius) as reported by the nearest monitor or satellite assimilation.

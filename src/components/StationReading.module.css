@@ -70,6 +70,17 @@
   color: var(--ink);
 }
 
+.aqiPill {
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--smog);
+  margin-top: 2px;
+}
+
 .note {
   font-size: var(--fs-body);
   line-height: 1.4;

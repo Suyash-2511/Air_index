@@ -15,6 +15,8 @@ export interface ComboboxProps {
   loading?: boolean | undefined;
   placeholder?: string | undefined;
   error?: string | undefined;
+  /** Set when a finished search found nothing, to say so instead of showing an empty list. */
+  noResultsFor?: string | undefined;
 }
 
 /**
@@ -30,6 +32,7 @@ export function Combobox({
   loading = false,
   placeholder,
   error,
+  noResultsFor,
 }: ComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -115,6 +118,12 @@ export function Combobox({
         <div id={errorId} className={styles.error} role="alert">
           {error}
         </div>
+      )}
+
+      {noResultsFor && !error && !loading && (
+        <p className={styles.empty} role="status">
+          No places in India match “{noResultsFor}”. Try a city, neighbourhood or PIN code.
+        </p>
       )}
 
       {isOpen && suggestions.length > 0 && (

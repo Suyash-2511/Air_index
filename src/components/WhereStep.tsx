@@ -42,6 +42,7 @@ export function WhereStep({ initialLocation, liveLocation, onLocationConfirmed }
   const [suggestions, setSuggestions] = useState<readonly PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  const [emptyFor, setEmptyFor] = useState<string | undefined>();
   const [isLive, setIsLive] = useState(false);
   // Once the visitor types or picks another place, live location must not overwrite it.
   const choseOtherRef = useRef(false);
@@ -74,11 +75,10 @@ export function WhereStep({ initialLocation, liveLocation, onLocationConfirmed }
     }
 
     const timer = setTimeout(async () => {
-      setLoading(true);
-      setError(undefined);
+      setLoading(true); setError(undefined);
       try {
         const results = await fetchPlaceSuggestions(query, sessionTokenRef.current);
-        setSuggestions(results);
+        setSuggestions(results); setEmptyFor(results.length === 0 ? query : undefined);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to load locations");
       } finally {
@@ -150,6 +150,7 @@ export function WhereStep({ initialLocation, liveLocation, onLocationConfirmed }
           loading={loading}
           placeholder="Try College Road, Nashik or Indiranagar, Bengaluru"
           error={error}
+          noResultsFor={emptyFor === query ? emptyFor : undefined}
         />
       </div>
 

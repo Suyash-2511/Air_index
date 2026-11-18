@@ -44,6 +44,33 @@ describe("Grounding & Number Verification", () => {
     );
   });
 
+  it("protects chemical formulas NO2, SO2, and O3 from being parsed as quantitative claims", () => {
+    const text =
+      "Vehicles emit NO2 and power plants produce SO2. Sunlight converts emissions to O3 in the afternoon.";
+    const result = groundText(text, dummyPlan);
+    expect(result).toBe(text);
+  });
+
+  it("grounds pollutant concentrations and AQI score when air data is provided", () => {
+    const air = {
+      hour: 12,
+      pm25: 182,
+      pm10: 290,
+      no2: 75,
+      o3: 49,
+      co: 1.4,
+      so2: 38,
+      aqi: { value: 342, category: "Very poor", dominantPollutant: "pm25", source: "cpcb" as const },
+    };
+    const text =
+      "Today's AQI is 342 with PM2.5 at 182 µg/m³ and NO2 at 75 µg/m³. A totally made up 9999 reading was reported.";
+    const result = groundText(text, dummyPlan, air);
+    expect(result).toContain("AQI is 342");
+    expect(result).toContain("PM2.5 at 182");
+    expect(result).toContain("NO2 at 75");
+    expect(result).not.toContain("9999");
+  });
+
   it("strips sentences containing a deliberately invented or hallucinated number", () => {
     const text =
       "This action saves 120 µg of PM2.5. However, it also eliminates 999 kilograms of mystery smog. Follow step 2.";

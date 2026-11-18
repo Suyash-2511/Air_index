@@ -103,12 +103,17 @@ export async function askPlanQuestion(
   return (await res.json()) as AskApiResponse;
 }
 
-/**
- * Current outdoor PM2.5 for a location, used for the live reading on the landing
- * page. Returns undefined instead of throwing, because the page must still work
- * when air data is unavailable.
- */
-export async function fetchCurrentPm25(lat: number, lng: number): Promise<number | undefined> {
+export interface CurrentAirReading {
+  pm25: number;
+  aqi?: {
+    value: number;
+    category: string;
+    dominantPollutant?: string;
+  };
+}
+
+/** Fetches current air reading including PM2.5 and AQI summary for landing display. */
+export async function fetchCurrentAir(lat: number, lng: number): Promise<CurrentAirReading | undefined> {
   try {
     const res = await fetch("/api/air", {
       method: "POST",
@@ -116,10 +121,24 @@ export async function fetchCurrentPm25(lat: number, lng: number): Promise<number
       body: JSON.stringify({ lat, lng }),
     });
     if (!res.ok) return undefined;
-    const data = (await res.json()) as { current?: { pm25?: unknown } };
+    const data = (await res.json()) as { current?: { pm25?: unknown; aqi?: { value: number; category: string; dominantPollutant?: string } } };
     const pm25 = data.current?.pm25;
-    return typeof pm25 === "number" && Number.isFinite(pm25) ? pm25 : undefined;
+    if (typeof pm25 !== "number" || !Number.isFinite(pm25)) return undefined;
+    return {
+      pm25,
+      ...(data.current?.aqi && { aqi: data.current.aqi }),
+    };
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Current outdoor PM2.5 for a location, used for the live reading on the landing
+ * page. Returns undefined instead of throwing, because the page must still work
+ * when air data is unavailable.
+ */
+export async function fetchCurrentPm25(lat: number, lng: number): Promise<number | undefined> {
+  const air = await fetchCurrentAir(lat, lng);
+  return air?.pm25;
 }

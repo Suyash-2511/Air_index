@@ -1,6 +1,7 @@
 import type { Plan } from "../interventions/rank";
+import type { HourlyAir } from "../types";
 
-/** Known domain constants (particulate sizes, filter mask standards, clock range). */
+/** Known domain constants (particulate sizes, filter mask standards, criteria limits, AQI bands). */
 const DOMAIN_ALLOWED_NUMBERS = new Set<number>([
   2.5, // PM2.5
   10, // PM10
@@ -8,9 +9,10 @@ const DOMAIN_ALLOWED_NUMBERS = new Set<number>([
   99, // N99 mask
   1, 2, 3, 4, 5, // Step numbers / ordinals
   24, // 24-hour day
+  60, 80, 100, // Criteria pollutant limits
+  50, 200, 300, 400, 500, // CPCB AQI bands
 ]);
 
-/** Known intervention human-readable plain language title mapping. */
 export const INTERVENTION_TITLES: Record<string, string> = {
   keep_windows_closed: "Keep windows closed",
   mask_outdoors: "Wear a mask outdoors",
@@ -24,18 +26,12 @@ export const INTERVENTION_TITLES: Record<string, string> = {
   avoid_outdoor_play_peak: "Avoid outdoor play during peak smog hours",
 };
 
-/** Returns a human-friendly plain language title for an intervention ID. */
 export function getInterventionTitle(id: string): string {
   const match = INTERVENTION_TITLES[id];
   if (match) return match;
   return id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/**
- * Normalises household member labels for display in the UI and explanation text.
- * Maps self-referential terms ("self", "me", "i", "user") to "You", and capitalises
- * any other labels (e.g. "mother" -> "Mother", "child 1" -> "Child 1").
- */
 export function normalizeMemberLabel(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return "You";
@@ -49,10 +45,6 @@ export function normalizeMemberLabel(raw: string): string {
     .join(" ");
 }
 
-/**
- * Strips internal member IDs (e.g. member-1) and snake_case intervention IDs
- * from text shown to users, replacing them with user-facing labels and titles.
- */
 export function stripInternalIds(
   text: string,
   memberIdToLabel: ReadonlyMap<string, string>,
@@ -72,18 +64,14 @@ export function stripInternalIds(
     cleaned = cleaned.replace(new RegExp(`\\b${escaped}\\b`, "gi"), title);
   }
 
-  // Fallback pattern matching for unmapped internal IDs
-  cleaned = cleaned.replace(/\bmember-\d+\b/gi, "family member");
-
-  return cleaned;
+  return cleaned.replace(/\bmember-\d+\b/gi, "family member");
 }
 
-/** Extracts and normalizes all quantitative values from a computed Plan. */
-export function extractPlanNumbers(plan: Plan): Set<number> {
+export function extractPlanNumbers(plan: Plan, air?: HourlyAir): Set<number> {
   const allowed = new Set<number>(DOMAIN_ALLOWED_NUMBERS);
 
-  const addVariants = (val: number): void => {
-    if (!Number.isFinite(val)) return;
+  const addVariants = (val: number | undefined): void => {
+    if (val === undefined || !Number.isFinite(val)) return;
     allowed.add(val);
     allowed.add(Math.round(val));
     allowed.add(Math.floor(val));
@@ -93,15 +81,10 @@ export function extractPlanNumbers(plan: Plan): Set<number> {
   };
 
   addVariants(plan.baselineTotal);
-
   for (const dose of plan.baseline) {
     addVariants(dose.totalMicrograms);
-    for (const actVal of Object.values(dose.byActivity)) {
-      if (typeof actVal === "number") addVariants(actVal);
-    }
-    for (const hVal of dose.byHour) {
-      addVariants(hVal);
-    }
+    for (const actVal of Object.values(dose.byActivity)) addVariants(actVal);
+    for (const hVal of dose.byHour) addVariants(hVal);
   }
 
   for (const item of plan.ranked) {
@@ -114,10 +97,19 @@ export function extractPlanNumbers(plan: Plan): Set<number> {
     }
   }
 
+  if (air) {
+    addVariants(air.pm25);
+    addVariants(air.pm10);
+    addVariants(air.no2);
+    addVariants(air.o3);
+    addVariants(air.co);
+    addVariants(air.so2);
+    addVariants(air.aqi?.value);
+  }
+
   return allowed;
 }
 
-/** Checks whether an extracted number matches an allowed plan value after rounding tolerance. */
 export function isNumberGrounded(num: number, allowedNumbers: Set<number>): boolean {
   if (allowedNumbers.has(num)) return true;
   if (allowedNumbers.has(Math.round(num))) return true;
@@ -133,6 +125,9 @@ function protectDomainTokens(sentence: string): string {
   return sentence
     .replace(/pm\s*2\.5/gi, "PM_TWO_POINT_FIVE")
     .replace(/pm\s*10/gi, "PM_TEN")
+    .replace(/\bno\s*2\b/gi, "NO_TWO")
+    .replace(/\bso\s*2\b/gi, "SO_TWO")
+    .replace(/\bo\s*3\b/gi, "O_THREE")
     .replace(/n\s*95/gi, "N_NINETY_FIVE")
     .replace(/n\s*99/gi, "N_NINETY_NINE")
     .replace(/\b(\d{1,2}):\d{2}\b/g, "$1");
@@ -145,7 +140,6 @@ function splitIntoSentences(text: string): string[] {
     .filter((s) => s.length > 0);
 }
 
-/** Filters text sentence by sentence, removing any sentence containing an unmatched number. */
 export function filterGroundedSentences(text: string, allowedNumbers: Set<number>): string {
   if (!text) return "";
 
@@ -180,8 +174,7 @@ export function filterGroundedSentences(text: string, allowedNumbers: Set<number
   return grounded.join(" ");
 }
 
-/** Verifies all numbers in model text against the computed Plan and drops ungrounded sentences. */
-export function groundText(text: string, plan: Plan): string {
-  const allowed = extractPlanNumbers(plan);
+export function groundText(text: string, plan: Plan, air?: HourlyAir): string {
+  const allowed = extractPlanNumbers(plan, air);
   return filterGroundedSentences(text, allowed);
 }

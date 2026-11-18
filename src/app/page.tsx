@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import { computePlan, fetchCurrentPm25 } from "@/client/api";
+import { computePlan, fetchCurrentAir, type CurrentAirReading } from "@/client/api";
 import type { PlanApiResponse } from "@/client/types";
 import { LandingHero } from "@/components/LandingHero";
 import { Masthead } from "@/components/Masthead";
@@ -41,7 +41,7 @@ export default function HomePage() {
   const [doseDensity, setDoseDensity] = useState(1.0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  const [landingPm25, setLandingPm25] = useState<number | undefined>();
+  const [landingAir, setLandingAir] = useState<CurrentAirReading | undefined>();
   const [liveLocation, setLiveLocation] = useState<Location | undefined>();
   const mainRef = useRef<HTMLElement>(null);
 
@@ -60,9 +60,9 @@ export default function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    setLandingPm25(undefined);
-    void fetchCurrentPm25(homeLat, homeLng).then((value) => {
-      if (!cancelled) setLandingPm25(value);
+    setLandingAir(undefined);
+    void fetchCurrentAir(homeLat, homeLng).then((value) => {
+      if (!cancelled) setLandingAir(value);
     });
     return () => {
       cancelled = true;
@@ -100,7 +100,8 @@ export default function HomePage() {
     }
   };
 
-  const currentPm25 = planData?.air.current.pm25 ?? landingPm25;
+  const currentPm25 = planData?.air.current.pm25 ?? landingAir?.pm25;
+  const currentAqi = planData?.air.current.aqi ?? landingAir?.aqi;
 
   return (
     <div className={styles.pageWrapper}>
@@ -115,6 +116,7 @@ export default function HomePage() {
             {step === 0 && (
               <LandingHero
                 livePm25={currentPm25}
+                aqi={currentAqi}
                 {...(liveLocation ? { cityName: liveLocation.label.split(",")[0] ?? liveLocation.label, isLive: true } : {})}
                 onPlanHome={() => setStep(1)}
                 onSampleFamily={() => handleLocationConfirmed(DELHI_LOCATION, true)}

@@ -146,5 +146,27 @@ describe("buildRoutine", () => {
     expect(sleep?.startHour).toBe(22);
     expect(sleep?.endHour).toBe(30);
   });
+
+  it("handles elevated ozone by keeping ventilate but preferring next-best window for outdoor activities", () => {
+    const forecastWithOzone = dummyForecast.map((f) => {
+      // Cleanest PM2.5 is hours 14-15 (40 µg/m³), but high afternoon ozone (180 µg/m³)
+      if (f.hour === 14 || f.hour === 15) return { ...f, o3: 180 };
+      // Next best PM2.5 is hours 16-17 (60 µg/m³), with safe ozone (55 µg/m³ avg)
+      if (f.hour === 16) return { ...f, pm25: 60, o3: 70 };
+      if (f.hour === 17) return { ...f, pm25: 60, o3: 40 };
+      return { ...f, o3: 40 };
+    });
+
+    const routine = buildRoutine(baseHousehold, forecastWithOzone, []);
+    const ventilate = routine.find((r) => r.kind === "ventilate");
+    const outdoor = routine.find((r) => r.kind === "outdoor");
+
+    // Ventilate stays at 14:00 (cleanest PM2.5 window)
+    expect(ventilate?.startHour).toBe(14);
+
+    // Outdoor moves to next-best window with safe ozone (16:00, PM2.5=60)
+    expect(outdoor?.startHour).toBe(16);
+    expect(outdoor?.detail).toContain("afternoon ozone is elevated");
+  });
 });
 

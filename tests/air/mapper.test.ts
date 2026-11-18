@@ -121,4 +121,44 @@ describe("Air Quality Mapper", () => {
     expect(unknownResolution.hour).toBe(6);
     expect(unknownResolution.isFallback).toBe(true);
   });
+
+  it("extracts CO, SO2 and official CPCB AQI from response", () => {
+    const rawResponse = {
+      dateTime: "2026-11-18T05:30:00Z",
+      regionCode: "in",
+      indexes: [
+        { code: "ind_cpcb", aqi: 320, category: "Very poor", dominantPollutant: "pm25" },
+      ],
+      pollutants: [
+        { code: "pm25", concentration: { value: 160, units: "MICROGRAMS_PER_CUBIC_METER" } },
+        { code: "co", concentration: { value: 1200, units: "PARTS_PER_BILLION" } },
+        { code: "so2", concentration: { value: 15, units: "PARTS_PER_BILLION" } },
+      ],
+    };
+
+    const result = mapCurrentConditions(rawResponse);
+    expect(result.co).toBe(1.37); // (1200 * 28.01) / 24.45 / 1000 = 1.37 mg/m³
+    expect(result.so2).toBe(39.31); // (15 * 64.07) / 24.45 = 39.31 µg/m³
+    expect(result.aqi).toEqual({
+      value: 320,
+      category: "Very poor",
+      dominantPollutant: "pm25",
+      source: "cpcb",
+    });
+  });
+
+  it("falls back to calculated CPCB AQI when ind_cpcb index is missing", () => {
+    const rawResponse = {
+      dateTime: "2026-11-18T05:30:00Z",
+      regionCode: "in",
+      pollutants: [
+        { code: "pm25", concentration: { value: 45, units: "MICROGRAMS_PER_CUBIC_METER" } },
+      ],
+    };
+
+    const result = mapCurrentConditions(rawResponse);
+    expect(result.aqi?.source).toBe("computed");
+    expect(result.aqi?.category).toBe("Satisfactory");
+    expect(result.aqi?.value).toBe(75);
+  });
 });

@@ -4,7 +4,11 @@ import { mapCurrentConditions, mapForecast } from "./mapper";
 import type { AirProvider } from "./provider";
 
 /** Extra computation options enabled on all Google Air Quality API requests. */
-export const EXTRA_COMPUTATIONS = ["POLLUTANT_CONCENTRATION", "HEALTH_RECOMMENDATIONS"] as const;
+export const EXTRA_COMPUTATIONS = [
+  "POLLUTANT_CONCENTRATION",
+  "HEALTH_RECOMMENDATIONS",
+  "LOCAL_AQI",
+] as const;
 
 /** Base URL for Google Maps Platform Air Quality API v1. */
 export const GOOGLE_AIR_BASE_URL = "https://airquality.googleapis.com/v1";

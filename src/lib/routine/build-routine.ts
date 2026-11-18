@@ -25,23 +25,31 @@ const PURIFIER_IDS = new Set(["air_purifier_bedroom", "add_bedroom_purifier", "h
 /** Builds a chronological 24-hour routine combining ambient forecast peaks, member routines, and interventions. */
 export function buildRoutine(
   household: Household,
-  forecast: readonly { hour: number; pm25: number }[],
+  forecast: readonly { hour: number; pm25: number; o3?: number | undefined }[],
   ranked: readonly RankedLike[],
 ): RoutineItem[] {
   if (forecast.length === 0) return [];
   const fMap = new Map(forecast.map((f) => [f.hour, f.pm25]));
+  const o3Map = new Map(forecast.filter((f) => f.o3 !== undefined).map((f) => [f.hour, f.o3!]));
   const items: RoutineItem[] = [];
 
   // a) Cleanest window (07:00-19:00, 2-hour daytime block with lowest mean PM2.5)
-  let clean: { start: number; end: number; mean: number } | undefined;
+  interface WindowScore { start: number; end: number; mean: number; meanO3?: number | undefined; }
+  const windows: WindowScore[] = [];
   for (let h = 7; h <= 17; h += 1) {
     const p1 = fMap.get(h);
     const p2 = fMap.get(h + 1);
     if (p1 !== undefined && p2 !== undefined) {
       const mean = (p1 + p2) / 2;
-      if (!clean || mean < clean.mean) clean = { start: h, end: h + 2, mean };
+      const o1 = o3Map.get(h);
+      const o2 = o3Map.get(h + 1);
+      const meanO3 = o1 !== undefined && o2 !== undefined ? (o1 + o2) / 2 : undefined;
+      windows.push({ start: h, end: h + 2, mean, meanO3 });
     }
   }
+
+  windows.sort((a, b) => a.mean - b.mean);
+  const clean = windows[0];
 
   if (clean) {
     const cleanMean = Math.round(clean.mean);
@@ -55,10 +63,20 @@ export function buildRoutine(
     );
     if (outdoors.length > 0) {
       const names = outdoors.map((m) => m.label).join(", ");
+      let target = clean;
+      let detail = `Least smoggy daytime hours for ${names} to be outdoors, about ${cleanMean} µg/m³.`;
+      if (clean.meanO3 !== undefined && clean.meanO3 > 100) {
+        const safer = windows.find((w) => w.meanO3 !== undefined && w.meanO3 <= 100);
+        if (safer) {
+          target = safer;
+          detail = `Next-best daytime hours for ${names} to be outdoors, about ${Math.round(safer.mean)} µg/m³; afternoon ozone is elevated at ${Math.round(clean.meanO3)} µg/m³.`;
+        } else {
+          detail = `Least smoggy daytime hours for ${names} to be outdoors, about ${cleanMean} µg/m³, but afternoon ozone is elevated (${Math.round(clean.meanO3)} µg/m³).`;
+        }
+      }
       items.push({
-        startHour: clean.start, endHour: clean.end, kind: "outdoor", title: "Best time to be outside",
-        detail: `Least smoggy daytime hours for ${names} to be outdoors, about ${cleanMean} µg/m³.`,
-        pm25: cleanMean, memberIds: outdoors.map((m) => m.id), reducesOwnEmissions: false,
+        startHour: target.start, endHour: target.end, kind: "outdoor", title: "Best time to be outside",
+        detail, pm25: Math.round(target.mean), memberIds: outdoors.map((m) => m.id), reducesOwnEmissions: false,
       });
     }
   }

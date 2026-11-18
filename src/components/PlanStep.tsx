@@ -6,6 +6,7 @@ import { combineInterventions } from "@/lib/interventions/combine";
 import { buildRoutine } from "@/lib/routine/build-routine";
 import type { DayForecast, DoseBreakdown, Household } from "@/lib/types";
 import { AreaMap } from "./AreaMap";
+import { AirToday } from "./AirToday";
 import { AskPanel } from "./AskPanel";
 import { ChangeCard } from "./ChangeCard";
 import { DayStrip } from "./DayStrip";
@@ -101,6 +102,10 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
           )}
         </p>
       </header>
+
+      <div className={styles.fullRow}>
+        <AirToday air={planData.air.current} />
+      </div>
 
       <div className={styles.fullRow}>
         <PlanActions

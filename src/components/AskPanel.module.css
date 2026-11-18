@@ -104,3 +104,9 @@
   color: var(--ink-2);
   line-height: 1.4;
 }
+
+.asked {
+  margin: 0 0 var(--space-8);
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}

@@ -1,16 +1,16 @@
 import { z } from "zod";
 import { AppError } from "../security/errors";
 import type { HourlyAir } from "../types";
+import { calculateIndiaAqi, type ConcentrationInput, getAqiCategory } from "./india-aqi";
+import { convertPollutantConcentration, MOLECULAR_WEIGHTS } from "./units";
 
-/** Molecular weight to molar volume conversion factors from ppb to µg/m³ ((ppb * MW) / 24.45). */
 export const PPB_TO_UGM3_FACTORS = {
-  no2: 46.01 / 24.45,
-  o3: 48.0 / 24.45,
-  co: 28.01 / 24.45,
-  so2: 64.07 / 24.45,
+  no2: MOLECULAR_WEIGHTS.no2 / 24.45,
+  o3: MOLECULAR_WEIGHTS.o3 / 24.45,
+  co: MOLECULAR_WEIGHTS.co / 24.45,
+  so2: MOLECULAR_WEIGHTS.so2 / 24.45,
 } as const;
 
-/** Mapping of ISO 3166-1 alpha-2 region codes to representative IANA time zones. */
 export const REGION_TIMEZONES: Readonly<Record<string, string>> = {
   in: "Asia/Kolkata",
   us: "America/New_York",
@@ -27,13 +27,23 @@ export const pollutantSchema = z.object({
   fullName: z.string().optional(),
   concentration: concentrationSchema.optional(),
 });
+export const aqiIndexSchema = z.object({
+  code: z.string(),
+  displayName: z.string().optional(),
+  aqi: z.number().optional(),
+  aqiDisplay: z.string().optional(),
+  category: z.string().optional(),
+  dominantPollutant: z.string().optional(),
+});
 export const currentConditionsResponseSchema = z.object({
   dateTime: z.string().optional(),
   regionCode: z.string().optional(),
+  indexes: z.array(aqiIndexSchema).optional(),
   pollutants: z.array(pollutantSchema).optional(),
 });
 export const hourlyForecastRecordSchema = z.object({
   dateTime: z.string().optional(),
+  indexes: z.array(aqiIndexSchema).optional(),
   pollutants: z.array(pollutantSchema).optional(),
 });
 export const forecastResponseSchema = z.object({
@@ -41,29 +51,16 @@ export const forecastResponseSchema = z.object({
   hourlyForecasts: z.array(hourlyForecastRecordSchema).optional(),
 });
 
-/** Converts a pollutant concentration value into µg/m³ based on reported units. */
 export function convertConcentration(code: string, value: number, units: string): number {
-  if (!Number.isFinite(value) || value < 0) return 0;
-  const normalizedUnits = units.toUpperCase();
-  if (normalizedUnits === "MICROGRAMS_PER_CUBIC_METER") return Math.round(value * 100) / 100;
-  if (normalizedUnits === "PARTS_PER_BILLION") {
-    const key = code.toLowerCase();
-    const factor: number | undefined =
-      key in PPB_TO_UGM3_FACTORS ? PPB_TO_UGM3_FACTORS[key as keyof typeof PPB_TO_UGM3_FACTORS] : undefined;
-    const converted = factor !== undefined ? value * factor : value;
-    return Math.round(converted * 100) / 100;
-  }
-  return Math.round(value * 100) / 100;
+  return convertPollutantConcentration(code, value, units);
 }
 
-/** Result of mapping a timestamp to its local clock hour. */
 export interface LocalHourResolution {
   hour: number;
   timeZone: string;
   isFallback: boolean;
 }
 
-/** Resolves local clock hour using response regionCode mapped to an IANA time zone. */
 export function getLocalHour(isoTimestamp: string | undefined, regionCode?: string): LocalHourResolution {
   if (!isoTimestamp) return { hour: 0, timeZone: "UTC", isFallback: true };
   const match = /T(\d{2}):\d{2}:\d{2}(?:[+-]\d{2}:\d{2})$/.exec(isoTimestamp);
@@ -81,7 +78,6 @@ export function getLocalHour(isoTimestamp: string | undefined, regionCode?: stri
   return { hour: date.getUTCHours(), timeZone: "UTC", isFallback: true };
 }
 
-/** Resolves the current local clock hour for a region code (defaults to "in" / Asia/Kolkata). */
 export function getLocationCurrentHour(regionCode = "in", date: Date = new Date()): number {
   const cleanRegion = regionCode.trim().toLowerCase();
   const timeZone = REGION_TIMEZONES[cleanRegion] ?? "Asia/Kolkata";
@@ -94,43 +90,71 @@ interface ExtractedPollutants {
   pm10?: number;
   no2?: number;
   o3?: number;
+  co?: number;
+  so2?: number;
 }
 
 function extractPollutants(pollutants: ReadonlyArray<z.infer<typeof pollutantSchema>> = []): ExtractedPollutants {
   const result: ExtractedPollutants = {};
   for (const p of pollutants) {
     if (!p.concentration || !Number.isFinite(p.concentration.value)) continue;
-    const code = p.code.toLowerCase();
-    const val = convertConcentration(code, p.concentration.value, p.concentration.units);
+    const code = p.code.toLowerCase().replace(".", "");
+    const val = convertPollutantConcentration(code, p.concentration.value, p.concentration.units);
     if (code === "pm25") result.pm25 = Math.min(2000, Math.max(0, val));
     else if (code === "pm10") result.pm10 = Math.min(2000, Math.max(0, val));
     else if (code === "no2") result.no2 = Math.min(2000, Math.max(0, val));
     else if (code === "o3") result.o3 = Math.min(2000, Math.max(0, val));
+    else if (code === "co") result.co = Math.min(200, Math.max(0, val));
+    else if (code === "so2") result.so2 = Math.min(2000, Math.max(0, val));
   }
   return result;
 }
 
-/** Maps raw currentConditions:lookup JSON into a validated HourlyAir reading. */
+function resolveAqi(
+  indexes: ReadonlyArray<z.infer<typeof aqiIndexSchema>> | undefined,
+  concentrations: ExtractedPollutants,
+): HourlyAir["aqi"] {
+  const cpcb = indexes?.find((idx) => idx.code.toLowerCase() === "ind_cpcb");
+  if (cpcb && typeof cpcb.aqi === "number" && Number.isFinite(cpcb.aqi)) {
+    const val = Math.min(500, Math.max(0, Math.round(cpcb.aqi)));
+    return {
+      value: val,
+      // Google words CPCB categories differently ("Poor air quality"); use the CPCB band names.
+      category: getAqiCategory(val),
+      dominantPollutant: (cpcb.dominantPollutant ?? "pm25").toLowerCase().replace(".", ""),
+      source: "cpcb",
+    };
+  }
+  if (concentrations.pm25 !== undefined) {
+    return calculateIndiaAqi(concentrations as ConcentrationInput);
+  }
+  return undefined;
+}
+
 export function mapCurrentConditions(raw: unknown): HourlyAir {
   const parsed = currentConditionsResponseSchema.parse(raw);
   const { hour, isFallback } = getLocalHour(parsed.dateTime, parsed.regionCode);
-  const { pm25, pm10, no2, o3 } = extractPollutants(parsed.pollutants);
+  const extracted = extractPollutants(parsed.pollutants);
 
-  if (pm25 === undefined) {
+  if (extracted.pm25 === undefined) {
     throw new AppError(502, "Current conditions response missing PM2.5 reading.");
   }
 
+  const aqi = resolveAqi(parsed.indexes, extracted);
+
   return {
     hour,
-    pm25,
-    ...(pm10 !== undefined && { pm10 }),
-    ...(no2 !== undefined && { no2 }),
-    ...(o3 !== undefined && { o3 }),
+    pm25: extracted.pm25,
+    ...(extracted.pm10 !== undefined && { pm10: extracted.pm10 }),
+    ...(extracted.no2 !== undefined && { no2: extracted.no2 }),
+    ...(extracted.o3 !== undefined && { o3: extracted.o3 }),
+    ...(extracted.co !== undefined && { co: extracted.co }),
+    ...(extracted.so2 !== undefined && { so2: extracted.so2 }),
+    ...(aqi && { aqi }),
     ...(isFallback && { timeZoneFallback: true }),
   };
 }
 
-/** Maps raw forecast:lookup JSON into an array of HourlyAir readings. */
 export function mapForecast(raw: unknown, maxHours?: number): HourlyAir[] {
   const parsed = forecastResponseSchema.parse(raw);
   const items = parsed.hourlyForecasts ?? [];
@@ -138,15 +162,20 @@ export function mapForecast(raw: unknown, maxHours?: number): HourlyAir[] {
 
   for (const item of items) {
     const { hour, isFallback } = getLocalHour(item.dateTime, parsed.regionCode);
-    const { pm25, pm10, no2, o3 } = extractPollutants(item.pollutants);
-    if (pm25 === undefined) continue;
+    const extracted = extractPollutants(item.pollutants);
+    if (extracted.pm25 === undefined) continue;
+
+    const aqi = resolveAqi(item.indexes, extracted);
 
     mapped.push({
       hour,
-      pm25,
-      ...(pm10 !== undefined && { pm10 }),
-      ...(no2 !== undefined && { no2 }),
-      ...(o3 !== undefined && { o3 }),
+      pm25: extracted.pm25,
+      ...(extracted.pm10 !== undefined && { pm10: extracted.pm10 }),
+      ...(extracted.no2 !== undefined && { no2: extracted.no2 }),
+      ...(extracted.o3 !== undefined && { o3: extracted.o3 }),
+      ...(extracted.co !== undefined && { co: extracted.co }),
+      ...(extracted.so2 !== undefined && { so2: extracted.so2 }),
+      ...(aqi && { aqi }),
       ...(isFallback && { timeZoneFallback: true }),
     });
   }
@@ -154,7 +183,6 @@ export function mapForecast(raw: unknown, maxHours?: number): HourlyAir[] {
   return typeof maxHours === "number" && maxHours > 0 ? mapped.slice(0, maxHours) : mapped;
 }
 
-/** Constructs a 24-hour sequence anchored by current conditions. */
 export function buildTodayForecast(current: HourlyAir, forecast: ReadonlyArray<HourlyAir>): HourlyAir[] {
   const result: HourlyAir[] = [current];
   const currentHour = current.hour;

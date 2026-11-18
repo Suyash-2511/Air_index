@@ -75,6 +75,14 @@
   --paper-raised: var(--sky-1);
   --ink-soft: var(--ink-2);
   --radius: var(--radius-panel);
+
+  /* CPCB Indian AQI Band Colors (Muted Dark Theme) */
+  --aqi-good: #52B788;
+  --aqi-satisfactory: #85C775;
+  --aqi-moderate: #E2B053;
+  --aqi-poor: #E38344;
+  --aqi-very-poor: #DF5D5D;
+  --aqi-severe: #A64452;
 }
 
 /*
@@ -115,4 +123,12 @@
   --paper: var(--sky-0);
   --paper-raised: var(--sky-1);
   --ink-soft: var(--ink-2);
+
+  /* CPCB Indian AQI Band Colors (Muted Light Theme) */
+  --aqi-good: #2D6A4F;
+  --aqi-satisfactory: #407A38;
+  --aqi-moderate: #946C00;
+  --aqi-poor: #BD5B1B;
+  --aqi-very-poor: #B33939;
+  --aqi-severe: #78202E;
 }

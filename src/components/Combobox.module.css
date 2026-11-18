@@ -118,3 +118,13 @@
   font-size: 0.8125rem;
   color: var(--amber-deep);
 }
+
+.empty {
+  margin: var(--space-8) 0 0;
+  padding: var(--space-12) var(--space-16);
+  font-size: 0.875rem;
+  color: var(--ink-2);
+  background: var(--field);
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius-sm);
+}

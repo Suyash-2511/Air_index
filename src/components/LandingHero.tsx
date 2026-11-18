@@ -13,6 +13,7 @@ export interface LandingHeroProps {
   cityName?: string;
   /** True when the reading is for the visitor's own location rather than the default city. */
   isLive?: boolean;
+  aqi?: { value: number; category: string } | undefined;
 }
 
 const STEPS = [
@@ -25,7 +26,7 @@ const STEPS = [
  * Landing introduction, set as the front page of a bulletin: a kicker, the headline,
  * today's station reading, and the two ways in.
  */
-export function LandingHero({ onPlanHome, onSampleFamily, livePm25, cityName = "New Delhi", isLive = false }: LandingHeroProps) {
+export function LandingHero({ onPlanHome, onSampleFamily, livePm25, cityName = "New Delhi", isLive = false, aqi }: LandingHeroProps) {
   return (
     <section className={styles.heroSection} aria-labelledby="landing-headline">
       <div className={styles.content}>
@@ -59,7 +60,7 @@ export function LandingHero({ onPlanHome, onSampleFamily, livePm25, cityName = "
           </button>
         </div>
 
-        <StationReading livePm25={livePm25} cityName={cityName} isLive={isLive} />
+        <StationReading livePm25={livePm25} cityName={cityName} isLive={isLive} aqi={aqi} />
 
         <ol className={styles.steps} aria-label="How it works">
           {STEPS.map((s, i) => (

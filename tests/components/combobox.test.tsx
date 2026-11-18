@@ -88,4 +88,12 @@ describe("Combobox Component", () => {
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
+
+  it("says when a finished search found no places", () => {
+    render(
+      <Combobox label="Search city" value="zzqx" onChange={vi.fn()} onSelect={vi.fn()} suggestions={[]} noResultsFor="zzqx" />,
+    );
+    expect(screen.getByRole("status").textContent).toMatch(/No places in India match “zzqx”/);
+  });
 });
+

@@ -19,6 +19,7 @@ export interface AskPanelProps {
 export function AskPanel({ household }: AskPanelProps) {
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<AskApiResponse | undefined>();
+  const [asked, setAsked] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
@@ -29,8 +30,11 @@ export function AskPanel({ household }: AskPanelProps) {
     setLoading(true);
     setError(undefined);
     try {
-      const resp = await askPlanQuestion(question.trim(), household);
+      const q = question.trim();
+      const resp = await askPlanQuestion(q, household);
       setResult(resp);
+      setAsked(q);
+      setQuestion("");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to answer question");
     } finally {
@@ -57,7 +61,7 @@ export function AskPanel({ household }: AskPanelProps) {
           type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="e.g. Should my mother wear a mask?"
+          placeholder={result ? "Ask another question" : "e.g. Should my mother wear a mask?"}
           disabled={loading}
           className={styles.input}
         />
@@ -66,7 +70,7 @@ export function AskPanel({ household }: AskPanelProps) {
           disabled={loading || !question.trim()}
           className={styles.button}
         >
-          {loading ? "Checking plan..." : "Ask"}
+          {loading ? "Checking your plan…" : "Ask"}
         </button>
       </form>
 
@@ -78,6 +82,7 @@ export function AskPanel({ household }: AskPanelProps) {
 
       {result && (
         <div className={styles.answerBox} aria-live="polite">
+          {asked && <p className={styles.asked}>You asked: “{asked}”</p>}
           <p>{result.answer}</p>
           {result.citations.length > 0 && (
             <div className={styles.citations}>
