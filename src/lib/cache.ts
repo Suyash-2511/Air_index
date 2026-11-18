@@ -22,6 +22,23 @@ export function hashLocationHourKey(lat: number, lng: number, hour: number): str
   return createHash("sha256").update(rawKey).digest("hex");
 }
 
+/** Hashes a normalized autocomplete search query string into a cache key. */
+export function hashNormalizedInputKey(input: string): string {
+  const normalized = input.trim().toLowerCase();
+  return createHash("sha256").update(normalized).digest("hex");
+}
+
+/** Hashes latitude and longitude rounded to 3 decimal places for reverse geocoding cache. */
+export function hashGeocodeKey(lat: number, lng: number): string {
+  const rawKey = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+  return createHash("sha256").update(rawKey).digest("hex");
+}
+
+/** Generates cache key for heatmap tile coordinates. */
+export function tileKey(zoom: number, x: number, y: number): string {
+  return `${zoom}/${x}/${y}`;
+}
+
 /**
  * Lightweight in-memory Least Recently Used (LRU) cache with Time-To-Live (TTL) expiration.
  * Evicts oldest unaccessed entries when maxSize is reached to bound memory footprint.
@@ -112,3 +129,12 @@ export class LruCache<T> {
 
 /** Global 30-minute air forecast cache instance. */
 export const airCache = new LruCache<unknown>(100, 30 * 60 * 1000);
+
+/** Global 24-hour Places autocomplete suggestions cache. */
+export const autocompleteCache = new LruCache<unknown>(200, 24 * 60 * 60 * 1000);
+
+/** Global 7-day reverse geocoding label cache. */
+export const geocodeCache = new LruCache<unknown>(500, 7 * 24 * 60 * 60 * 1000);
+
+/** Global 30-minute heatmap tile cache (bounded to 1,000 tiles). */
+export const tileCache = new LruCache<Uint8Array>(1000, 30 * 60 * 1000);

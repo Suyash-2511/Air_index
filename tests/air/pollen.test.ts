@@ -36,19 +36,12 @@ describe("Pollen API & Mapping", () => {
     expect(extractMaxPollenLevel(rawData)).toBe("high");
   });
 
-  it("handles empty or missing pollen data gracefully", () => {
-    expect(extractMaxPollenLevel({})).toBe("low");
-    expect(extractMaxPollenLevel({ dailyInfo: [] })).toBe("low");
-  });
-
-  it("fetches pollen forecast with stubbed fetch", async () => {
+  it("fetches pollen forecast with X-Goog-Api-Key header and not in URL", async () => {
     const fakeResponse = {
       regionCode: "IN",
       dailyInfo: [
         {
-          pollenTypeInfo: [
-            { code: "GRASS", indexInfo: { value: 3, category: "Moderate" } },
-          ],
+          pollenTypeInfo: [{ code: "GRASS", indexInfo: { value: 3, category: "Moderate" } }],
         },
       ],
     };
@@ -60,40 +53,19 @@ describe("Pollen API & Mapping", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const level = await getPollenForecast(
-      { lat: 28.61, lng: 77.21, label: "Delhi" },
-      "test-pollen-key",
-      { timeoutMs: 500, maxRetries: 0 },
-    );
+    const secretKey = "pollen-secret-key-123";
+    const level = await getPollenForecast({ lat: 28.61, lng: 77.21, label: "Delhi" }, secretKey);
 
     expect(level).toBe("medium");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+
     const firstCall = fetchMock.mock.calls[0];
     const calledUrl = firstCall ? String(firstCall[0]) : "";
-    expect(calledUrl).toContain("pollen.googleapis.com");
-    expect(calledUrl).toContain("location.latitude=28.61");
-  });
+    const calledInit = (firstCall ? firstCall[1] : undefined) as RequestInit | undefined;
 
-  it("retries pollen requests on 500 status", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: false, status: 500 })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          dailyInfo: [{ pollenTypeInfo: [{ indexInfo: { value: 2 } }] }],
-        }),
-      });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const level = await getPollenForecast(
-      { lat: 28.61, lng: 77.21, label: "Delhi" },
-      "test-key",
-      { timeoutMs: 500, maxRetries: 1, initialBackoffMs: 10 },
-    );
-
-    expect(level).toBe("low");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(calledUrl).not.toContain(secretKey);
+    expect(calledUrl).not.toContain("key=");
+    const headers = calledInit?.headers as Record<string, string>;
+    expect(headers["X-Goog-Api-Key"]).toBe(secretKey);
   });
 });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AppError } from "../security/errors";
+import { googleJson } from "../google/http";
 import type { Location } from "../types";
 
 /** Categorized pollen allergen risk level for households with sensitive members. */
@@ -68,80 +68,13 @@ export function extractMaxPollenLevel(data: z.infer<typeof pollenForecastRespons
   return mapUpiToPollenLevel(maxUpi);
 }
 
-interface PollenRequestOptions {
-  timeoutMs?: number;
-  maxRetries?: number;
-  initialBackoffMs?: number;
-}
-
 /**
- * Fetches daily pollen forecast from Google Pollen API and maps it to low/medium/high.
- * Uses 10s timeout and up to 2 retries with backoff on 429 and 5xx errors.
+ * Fetches daily pollen forecast from Google Pollen API via the shared HTTP helper.
+ * Uses X-Goog-Api-Key header authentication, 10s timeout, and 429/5xx retry backoff.
  */
-export async function getPollenForecast(
-  location: Location,
-  apiKey: string,
-  options: PollenRequestOptions = {},
-): Promise<PollenLevel> {
-  if (!apiKey) {
-    throw new AppError(500, "Google Pollen API key is not configured.");
-  }
-
-  const timeoutMs = options.timeoutMs ?? 10000;
-  const maxRetries = options.maxRetries ?? 2;
-  let backoffMs = options.initialBackoffMs ?? 500;
-  let attempt = 0;
-
-  const url = `${GOOGLE_POLLEN_BASE_URL}/forecast:lookup?key=${encodeURIComponent(
-    apiKey,
-  )}&location.latitude=${location.lat}&location.longitude=${location.lng}&days=1`;
-
-  while (attempt <= maxRetries) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timer);
-
-      if (response.ok) {
-        const raw = await response.json();
-        const parsed = pollenForecastResponseSchema.parse(raw);
-        return extractMaxPollenLevel(parsed);
-      }
-
-      const status = response.status;
-      const isRetryable = status === 429 || (status >= 500 && status < 600);
-
-      if (isRetryable && attempt < maxRetries) {
-        attempt += 1;
-        await new Promise((resolve) => setTimeout(resolve, backoffMs));
-        backoffMs *= 2;
-        continue;
-      }
-
-      throw new AppError(
-        status >= 500 ? 502 : status,
-        `Pollen service returned status ${status}.`,
-      );
-    } catch (err: unknown) {
-      clearTimeout(timer);
-      if (err instanceof AppError) throw err;
-
-      if (err instanceof Error && err.name === "AbortError") {
-        throw new AppError(504, "Pollen service request timed out.");
-      }
-
-      if (attempt < maxRetries) {
-        attempt += 1;
-        await new Promise((resolve) => setTimeout(resolve, backoffMs));
-        backoffMs *= 2;
-        continue;
-      }
-
-      throw new AppError(502, "Unable to reach pollen service.");
-    }
-  }
-
-  throw new AppError(502, "Pollen service retries exhausted.");
+export async function getPollenForecast(location: Location, apiKey: string): Promise<PollenLevel> {
+  const url = `${GOOGLE_POLLEN_BASE_URL}/forecast:lookup?location.latitude=${location.lat}&location.longitude=${location.lng}&days=1`;
+  const raw = await googleJson(url, apiKey);
+  const parsed = pollenForecastResponseSchema.parse(raw);
+  return extractMaxPollenLevel(parsed);
 }

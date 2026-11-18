@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAirProvider } from "@/lib/air";
+import { buildTodayForecast } from "@/lib/air/mapper";
 import { airCache, hashLocationHourKey } from "@/lib/cache";
 import { toSafeError } from "@/lib/security/errors";
 import { apiRateLimiter } from "@/lib/security/rate-limit";
@@ -81,7 +82,8 @@ export async function POST(request: Request): Promise<Response> {
     const provider = getAirProvider();
     const location = { lat, lng, label: "Target Location" };
     const current = await provider.current(location);
-    const forecast = await provider.forecast(location, 24);
+    const rawForecast = await provider.forecast(location, 24);
+    const forecast = buildTodayForecast(current, rawForecast);
 
     const responseData = { current, forecast };
     airCache.set(cacheKey, responseData);

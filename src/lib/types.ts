@@ -100,6 +100,7 @@ export const hourlyAirSchema = z.object({
   pm10: z.number().min(0).max(2000).optional(),
   no2: z.number().min(0).max(2000).optional(),
   o3: z.number().min(0).max(2000).optional(),
+  timeZoneFallback: z.boolean().optional(),
 });
 export type HourlyAir = z.infer<typeof hourlyAirSchema>;
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AppError } from "../security/errors";
 import type { HourlyAir } from "../types";
 
 /**
@@ -11,6 +12,16 @@ export const PPB_TO_UGM3_FACTORS = {
   co: 28.01 / 24.45,
   so2: 64.07 / 24.45,
 } as const;
+
+/** Mapping of ISO 3166-1 alpha-2 region codes to representative IANA time zones. */
+export const REGION_TIMEZONES: Readonly<Record<string, string>> = {
+  in: "Asia/Kolkata",
+  us: "America/New_York",
+  gb: "Europe/London",
+  fr: "Europe/Paris",
+  de: "Europe/Berlin",
+  jp: "Asia/Tokyo",
+};
 
 /** Schema validating the concentration object inside each pollutant report. */
 export const concentrationSchema = z.object({
@@ -29,6 +40,7 @@ export const pollutantSchema = z.object({
 /** Schema validating the current conditions lookup response. */
 export const currentConditionsResponseSchema = z.object({
   dateTime: z.string().optional(),
+  regionCode: z.string().optional(),
   pollutants: z.array(pollutantSchema).optional(),
 });
 
@@ -40,6 +52,7 @@ export const hourlyForecastRecordSchema = z.object({
 
 /** Schema validating the forecast lookup response body. */
 export const forecastResponseSchema = z.object({
+  regionCode: z.string().optional(),
   hourlyForecasts: z.array(hourlyForecastRecordSchema).optional(),
 });
 
@@ -63,37 +76,48 @@ export function convertConcentration(code: string, value: number, units: string)
   return Math.round(value * 100) / 100;
 }
 
+/** Result of mapping a timestamp to its local clock hour. */
+export interface LocalHourResolution {
+  hour: number;
+  timeZone: string;
+  isFallback: boolean;
+}
+
 /**
- * Maps an RFC3339 timestamp to the local clock hour (0–23) of the given coordinates.
- * Defaults to Asia/Kolkata for Indian subcontinent coordinates.
+ * Resolves local clock hour using response regionCode mapped to an IANA time zone.
+ * Falls back to UTC and sets isFallback=true when regionCode is missing or unmapped.
  */
-export function getLocalHour(isoTimestamp: string | undefined, lat: number, lng: number): number {
-  if (!isoTimestamp) return 0;
+export function getLocalHour(isoTimestamp: string | undefined, regionCode?: string): LocalHourResolution {
+  if (!isoTimestamp) return { hour: 0, timeZone: "UTC", isFallback: true };
+
   const match = /T(\d{2}):\d{2}:\d{2}(?:[+-]\d{2}:\d{2})$/.exec(isoTimestamp);
-  if (match && match[1]) return parseInt(match[1], 10);
-
-  const date = new Date(isoTimestamp);
-  if (Number.isNaN(date.getTime())) return 0;
-
-  if (lat >= 6 && lat <= 38 && lng >= 68 && lng <= 98) {
-    const fmt = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", hour: "numeric", hour12: false });
-    return parseInt(fmt.format(date), 10) % 24;
+  if (match && match[1]) {
+    return { hour: parseInt(match[1], 10), timeZone: "EmbeddedOffset", isFallback: false };
   }
 
-  const offsetMinutes = Math.round((lng / 15) * 60);
-  const localTime = new Date(date.getTime() + offsetMinutes * 60 * 1000);
-  return localTime.getUTCHours();
+  const date = new Date(isoTimestamp);
+  if (Number.isNaN(date.getTime())) return { hour: 0, timeZone: "UTC", isFallback: true };
+
+  const cleanRegion = regionCode?.trim().toLowerCase();
+  const timeZone = cleanRegion ? REGION_TIMEZONES[cleanRegion] : undefined;
+
+  if (timeZone) {
+    const fmt = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", hour12: false });
+    return { hour: parseInt(fmt.format(date), 10) % 24, timeZone, isFallback: false };
+  }
+
+  return { hour: date.getUTCHours(), timeZone: "UTC", isFallback: true };
 }
 
 interface ExtractedPollutants {
-  pm25: number;
+  pm25?: number;
   pm10?: number;
   no2?: number;
   o3?: number;
 }
 
 function extractPollutants(pollutants: ReadonlyArray<z.infer<typeof pollutantSchema>> = []): ExtractedPollutants {
-  const result: ExtractedPollutants = { pm25: 0 };
+  const result: ExtractedPollutants = {};
   for (const p of pollutants) {
     if (!p.concentration || !Number.isFinite(p.concentration.value)) continue;
     const code = p.code.toLowerCase();
@@ -108,26 +132,70 @@ function extractPollutants(pollutants: ReadonlyArray<z.infer<typeof pollutantSch
 
 /**
  * Maps raw currentConditions:lookup JSON into a validated HourlyAir reading.
- * Throws ZodError on malformed response structure.
+ * Requires PM2.5 to be present; flags timeZoneFallback if region is unknown.
  */
-export function mapCurrentConditions(raw: unknown, lat: number, lng: number): HourlyAir {
+export function mapCurrentConditions(raw: unknown): HourlyAir {
   const parsed = currentConditionsResponseSchema.parse(raw);
-  const hour = getLocalHour(parsed.dateTime, lat, lng);
+  const { hour, isFallback } = getLocalHour(parsed.dateTime, parsed.regionCode);
   const { pm25, pm10, no2, o3 } = extractPollutants(parsed.pollutants);
-  return { hour, pm25, ...(pm10 !== undefined && { pm10 }), ...(no2 !== undefined && { no2 }), ...(o3 !== undefined && { o3 }) };
+
+  if (pm25 === undefined) {
+    throw new AppError(502, "Current conditions response missing PM2.5 reading.");
+  }
+
+  return {
+    hour,
+    pm25,
+    ...(pm10 !== undefined && { pm10 }),
+    ...(no2 !== undefined && { no2 }),
+    ...(o3 !== undefined && { o3 }),
+    ...(isFallback && { timeZoneFallback: true }),
+  };
 }
 
 /**
  * Maps raw forecast:lookup JSON into an array of HourlyAir readings.
- * Ensures timestamps are converted to local hours and limits to requested length.
+ * Drops hours missing PM2.5; dose engine fills omissions with day's mean.
  */
-export function mapForecast(raw: unknown, lat: number, lng: number, maxHours?: number): HourlyAir[] {
+export function mapForecast(raw: unknown, maxHours?: number): HourlyAir[] {
   const parsed = forecastResponseSchema.parse(raw);
   const items = parsed.hourlyForecasts ?? [];
-  const mapped = items.map((item) => {
-    const hour = getLocalHour(item.dateTime, lat, lng);
+  const mapped: HourlyAir[] = [];
+
+  for (const item of items) {
+    const { hour, isFallback } = getLocalHour(item.dateTime, parsed.regionCode);
     const { pm25, pm10, no2, o3 } = extractPollutants(item.pollutants);
-    return { hour, pm25, ...(pm10 !== undefined && { pm10 }), ...(no2 !== undefined && { no2 }), ...(o3 !== undefined && { o3 }) };
-  });
+
+    if (pm25 === undefined) {
+      continue;
+    }
+
+    mapped.push({
+      hour,
+      pm25,
+      ...(pm10 !== undefined && { pm10 }),
+      ...(no2 !== undefined && { no2 }),
+      ...(o3 !== undefined && { o3 }),
+      ...(isFallback && { timeZoneFallback: true }),
+    });
+  }
+
   return typeof maxHours === "number" && maxHours > 0 ? mapped.slice(0, maxHours) : mapped;
+}
+
+/**
+ * Constructs a 24-hour sequence anchored by current conditions.
+ * Guarantees tomorrow's forecast never overwrites today's current clock hour.
+ */
+export function buildTodayForecast(current: HourlyAir, forecast: ReadonlyArray<HourlyAir>): HourlyAir[] {
+  const result: HourlyAir[] = [current];
+  const currentHour = current.hour;
+
+  for (const item of forecast) {
+    if (result.length >= 24) break;
+    if (item.hour === currentHour) continue;
+    result.push(item);
+  }
+
+  return result;
 }

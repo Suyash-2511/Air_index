@@ -73,5 +73,8 @@ export class RateLimiter {
   }
 }
 
-/** Global rate limiter protecting API routes (60 requests/minute per IP). */
+/** Global rate limiter protecting standard API routes (60 requests/minute per IP). */
 export const apiRateLimiter = new RateLimiter(60, 60000);
+
+/** Generous rate limiter protecting map tile rendering endpoints (500 requests/minute per IP). */
+export const tileRateLimiter = new RateLimiter(500, 60000);

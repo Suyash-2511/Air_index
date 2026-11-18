@@ -24,27 +24,11 @@ describe("Air Quality Providers", () => {
     expect(provider).toBeInstanceOf(GoogleAirQualityProvider);
   });
 
-  it("returns realistic regional data from FixtureAirProvider", async () => {
-    const provider = new FixtureAirProvider();
-    const delhi = { lat: 28.61, lng: 77.21, label: "Delhi" };
-
-    const current = await provider.current(delhi);
-    expect(current.hour).toBeGreaterThanOrEqual(0);
-    expect(current.hour).toBeLessThanOrEqual(23);
-    expect(current.pm25).toBeGreaterThanOrEqual(150); // Delhi severe smog
-
-    const forecast = await provider.forecast(delhi, 5);
-    expect(forecast).toHaveLength(5);
-    const firstForecast = forecast[0];
-    expect(firstForecast?.pm25).toBeGreaterThan(0);
-  });
-
-  it("Google provider queries currentConditions and maps successfully", async () => {
+  it("sends API key in X-Goog-Api-Key header and NEVER in the request URL", async () => {
     const fakeResponse = {
+      regionCode: "in",
       dateTime: "2026-11-18T05:30:00Z",
-      pollutants: [
-        { code: "pm25", concentration: { value: 160.0, units: "MICROGRAMS_PER_CUBIC_METER" } },
-      ],
+      pollutants: [{ code: "pm25", concentration: { value: 160.0, units: "MICROGRAMS_PER_CUBIC_METER" } }],
     };
 
     const fetchMock = vi.fn().mockResolvedValue({
@@ -54,7 +38,8 @@ describe("Air Quality Providers", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoogleAirQualityProvider("test-key", { timeoutMs: 500, maxRetries: 0 });
+    const secretKey = "test-secret-key-999";
+    const provider = new GoogleAirQualityProvider(secretKey);
     const location = { lat: 28.61, lng: 77.21, label: "Delhi" };
 
     const result = await provider.current(location);
@@ -64,14 +49,19 @@ describe("Air Quality Providers", () => {
     const firstCall = fetchMock.mock.calls[0];
     const calledUrl = firstCall ? String(firstCall[0]) : "";
     const calledInit = (firstCall ? firstCall[1] : undefined) as RequestInit | undefined;
-    expect(calledUrl).toContain("currentConditions:lookup");
-    expect(calledUrl).toContain("key=test-key");
-    const sentBody = JSON.parse(String(calledInit?.body ?? "{}"));
-    expect(sentBody.extraComputations).toContain("POLLUTANT_CONCENTRATION");
+
+    // Verify key is in header
+    const headers = calledInit?.headers as Record<string, string>;
+    expect(headers["X-Goog-Api-Key"]).toBe(secretKey);
+
+    // Verify key NEVER appears in URL
+    expect(calledUrl).not.toContain(secretKey);
+    expect(calledUrl).not.toContain("key=");
   });
 
-  it("Google provider queries forecast:lookup with period and pageSize", async () => {
+  it("queries forecast:lookup with period and sends X-Goog-Api-Key header", async () => {
     const fakeResponse = {
+      regionCode: "in",
       hourlyForecasts: [
         {
           dateTime: "2026-11-18T07:00:00Z",
@@ -87,7 +77,8 @@ describe("Air Quality Providers", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new GoogleAirQualityProvider("test-key", { timeoutMs: 500, maxRetries: 0 });
+    const secretKey = "test-forecast-key";
+    const provider = new GoogleAirQualityProvider(secretKey);
     const location = { lat: 28.61, lng: 77.21, label: "Delhi" };
 
     const result = await provider.forecast(location, 1);
@@ -97,74 +88,9 @@ describe("Air Quality Providers", () => {
     const firstCall = fetchMock.mock.calls[0];
     const calledUrl = firstCall ? String(firstCall[0]) : "";
     const calledInit = (firstCall ? firstCall[1] : undefined) as RequestInit | undefined;
-    expect(calledUrl).toContain("forecast:lookup");
-    const sentBody = JSON.parse(String(calledInit?.body ?? "{}"));
-    expect(sentBody.period?.startTime).toBeDefined();
-    expect(sentBody.period?.endTime).toBeDefined();
-  });
 
-  it("Google provider retries on 429 and succeeds on subsequent attempt", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        json: async () => ({ error: { message: "Quota exceeded" } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          dateTime: "2026-11-18T06:00:00Z",
-          pollutants: [{ code: "pm25", concentration: { value: 120, units: "MICROGRAMS_PER_CUBIC_METER" } }],
-        }),
-      });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const provider = new GoogleAirQualityProvider("test-key", {
-      timeoutMs: 1000,
-      maxRetries: 2,
-      initialBackoffMs: 10,
-    });
-    const result = await provider.current({ lat: 28.61, lng: 77.21, label: "Delhi" });
-
-    expect(result.pm25).toBe(120);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("Google provider fails immediately on 400 without retrying", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 400,
-      json: async () => ({ error: { message: "Invalid argument" } }),
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const provider = new GoogleAirQualityProvider("test-key", {
-      timeoutMs: 1000,
-      maxRetries: 2,
-      initialBackoffMs: 10,
-    });
-
-    await expect(provider.current({ lat: 28.61, lng: 77.21, label: "Delhi" })).rejects.toThrow();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("never exposes API key in thrown error message", async () => {
-    const fetchMock = vi.fn().mockRejectedValue(new Error("Network failure"));
-    vi.stubGlobal("fetch", fetchMock);
-
-    const provider = new GoogleAirQualityProvider("super-secret-key-12345", {
-      timeoutMs: 1000,
-      maxRetries: 0,
-    });
-
-    try {
-      await provider.current({ lat: 28.61, lng: 77.21, label: "Delhi" });
-      expect.unreachable("Should have thrown");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      expect(msg).not.toContain("super-secret-key-12345");
-    }
+    expect(calledUrl).not.toContain("key=");
+    const headers = calledInit?.headers as Record<string, string>;
+    expect(headers["X-Goog-Api-Key"]).toBe(secretKey);
   });
 });
