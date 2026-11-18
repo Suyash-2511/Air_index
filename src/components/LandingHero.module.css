@@ -15,7 +15,6 @@
   gap: var(--space-24);
 }
 
-/* Live reading, styled like a small instrument label */
 .eyebrow {
   display: inline-flex;
   align-items: center;
@@ -55,27 +54,10 @@
   80%, 100% { transform: scale(1.8); opacity: 0; }
 }
 
-.city {
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ink);
-}
-
-.divider {
-  width: 1px;
-  height: 12px;
-  background: var(--rule);
-}
-
-.reading strong {
-  font-weight: 600;
-  color: var(--smog-deep);
-}
-
-/* Never uppercase the unit: an uppercase µ becomes Μ and the unit turns into "MG". */
-.unit {
-  text-transform: none;
-}
+.city { text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink); }
+.divider { width: 1px; height: 12px; background: var(--rule); }
+.reading strong { font-weight: 600; color: var(--smog-deep); }
+.unit { text-transform: none; }
 
 .headline {
   font-family: var(--font-display), "Times New Roman", Georgia, serif;
@@ -93,12 +75,7 @@
   padding-bottom: 0.06em;
 }
 
-.line1,
-.line2 {
-  display: inline-block;
-  animation: lineReveal 900ms var(--ease-out) both;
-}
-
+.line1, .line2 { display: inline-block; animation: lineReveal 900ms var(--ease-out) both; }
 .line1 { animation-delay: 220ms; }
 .line2 { animation-delay: 300ms; }
 
@@ -107,10 +84,7 @@
   to { transform: translateY(0); }
 }
 
-.italic {
-  font-style: italic;
-  color: var(--smog);
-}
+.italic { font-style: italic; color: var(--smog); }
 
 .sentence {
   font-size: 18px;
@@ -132,8 +106,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.buttonPrimary,
-.buttonSecondary {
+.buttonPrimary, .buttonSecondary {
   display: inline-flex;
   align-items: center;
   gap: var(--space-12);
@@ -143,10 +116,7 @@
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
-  transition:
-    transform var(--duration-short) var(--ease-out),
-    background-color var(--duration-short) var(--ease-out),
-    border-color var(--duration-short) var(--ease-out);
+  transition: transform var(--duration-short) var(--ease-out), background-color var(--duration-short) var(--ease-out), border-color var(--duration-short) var(--ease-out);
 }
 
 .buttonPrimary {
@@ -158,7 +128,6 @@
   border: 1px solid var(--ink);
 }
 
-/* Warm fill that slides in from the left on hover */
 .buttonPrimary::before {
   content: "";
   position: absolute;
@@ -170,12 +139,7 @@
 }
 
 .buttonPrimary:hover::before { transform: translateX(0); }
-
-.arrow {
-  display: inline-block;
-  transition: transform 420ms var(--ease-out);
-}
-
+.arrow { display: inline-block; transition: transform 420ms var(--ease-out); }
 .buttonPrimary:hover .arrow { transform: translateX(4px); }
 
 .buttonSecondary {
@@ -189,10 +153,7 @@
   background: var(--glass);
 }
 
-.buttonPrimary:active,
-.buttonSecondary:active {
-  transform: scale(0.97);
-}
+.buttonPrimary:active, .buttonSecondary:active { transform: scale(0.97); }
 
 .steps {
   list-style: none;
@@ -222,29 +183,11 @@
 }
 
 @media (max-width: 640px) {
-  .heroSection {
-    min-height: auto;
-    padding: var(--space-32) 0;
-  }
-
-  .actionRow {
-    flex-direction: column;
-  }
-
-  .buttonPrimary,
-  .buttonSecondary {
-    justify-content: center;
-  }
-
-  .steps {
-    grid-template-columns: 1fr;
-    gap: var(--space-16);
-  }
-
-  .step {
-    flex-direction: row;
-    gap: var(--space-12);
-  }
+  .heroSection { min-height: auto; padding: var(--space-32) 0; }
+  .actionRow { flex-direction: column; }
+  .buttonPrimary, .buttonSecondary { justify-content: center; }
+  .steps { grid-template-columns: 1fr; gap: var(--space-16); }
+  .step { flex-direction: row; gap: var(--space-12); }
 }
 
 @media (prefers-reduced-motion: reduce) {

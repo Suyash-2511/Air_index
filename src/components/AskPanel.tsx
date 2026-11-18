@@ -39,9 +39,9 @@ export function AskPanel({ household }: AskPanelProps) {
   };
 
   return (
-    <div className={styles.panel} aria-labelledby="ask-panel-title">
+    <section className={styles.panel} aria-labelledby="ask-panel-title">
       <h3 id="ask-panel-title" className={styles.title}>
-        Ask About Your Plan
+        Ask about your plan
       </h3>
       <p className={styles.description}>
         Ask specific questions about your family members, mask use, purifier settings,
@@ -97,6 +97,6 @@ export function AskPanel({ household }: AskPanelProps) {
         and routine adaptation. It is not medical advice. For severe symptoms, acute respiratory
         distress, or medical emergencies, seek immediate clinical care.
       </footer>
-    </div>
+    </section>
   );
 }

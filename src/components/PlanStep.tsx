@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { PlanApiResponse } from "@/client/types";
 import { combineInterventions } from "@/lib/interventions/combine";
 import type { DayForecast, DoseBreakdown, Household } from "@/lib/types";
+import { AreaMap } from "./AreaMap";
 import { AskPanel } from "./AskPanel";
 import { ChangeCard } from "./ChangeCard";
 import { DayStrip } from "./DayStrip";
+import { PlanActions } from "./PlanActions";
 import styles from "./PlanStep.module.css";
 
 /** Props for Step 3: Your plan. */
@@ -112,6 +114,12 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
           </div>
         </header>
 
+        <PlanActions
+          planData={planData}
+          household={household}
+          currentTotal={currentTotal}
+        />
+
         <section className={styles.cardsSection} aria-labelledby="ranked-changes-title">
           <h3 id="ranked-changes-title" className={styles.cardsTitle}>
             Changes, ranked by what they save ({planData.ranked.length})
@@ -136,6 +144,12 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
       </div>
 
       <div className={styles.rightColumn}>
+        <AreaMap
+          lat={household.location.lat}
+          lng={household.location.lng}
+          label={household.location.label}
+        />
+
         <DayStrip
           household={household}
           baselineDoses={planData.baseline}

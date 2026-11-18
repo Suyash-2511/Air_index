@@ -7,6 +7,7 @@ import type { PlanApiResponse } from "@/client/types";
 import { IconMoon, IconSun } from "@/components/icons";
 import { LandingHero } from "@/components/LandingHero";
 import { PlanStep } from "@/components/PlanStep";
+import { getSampleHousehold } from "@/components/sampleHousehold";
 import { StepNav, type StepNumber } from "@/components/StepNav";
 import { WhereStep } from "@/components/WhereStep";
 import { getDefaultHousehold, WhoStep } from "@/components/WhoStep";
@@ -23,44 +24,6 @@ const DELHI_LOCATION: Location = {
   lng: 77.209,
   label: "Connaught Place, New Delhi, Delhi",
 };
-
-function getSampleHousehold(loc: Location): Household {
-  return {
-    members: [
-      {
-        id: "m-user",
-        label: "You",
-        ageBand: "adult",
-        sensitivities: [],
-        windows: [
-          { activity: "sleep", setting: "indoor", startHour: 22, durationMinutes: 480, room: "bedroom", mask: false },
-          { activity: "rest_indoor", setting: "indoor", startHour: 6, durationMinutes: 120, room: "living", mask: false },
-          { activity: "commute_cycle", setting: "outdoor", startHour: 8, durationMinutes: 60, room: "living", mask: false },
-          { activity: "light_indoor", setting: "indoor", startHour: 9, durationMinutes: 780, room: "living", mask: false },
-        ],
-      },
-      {
-        id: "m-mother",
-        label: "Mother",
-        ageBand: "older_adult",
-        sensitivities: ["asthma"],
-        windows: [
-          { activity: "sleep", setting: "indoor", startHour: 22, durationMinutes: 480, room: "bedroom", mask: false },
-          { activity: "rest_indoor", setting: "indoor", startHour: 6, durationMinutes: 960, room: "living", mask: false },
-        ],
-      },
-    ],
-    home: {
-      windowHabit: "open_often",
-      hasPurifier: false,
-      purifierRoom: "living",
-      cookingFuel: "lpg",
-      hasExhaustFan: false,
-      smokingIndoors: false,
-    },
-    location: loc,
-  };
-}
 
 /** Coordinator for Saans: light theme by default, with the Three.js Earth centrepiece. */
 export default function HomePage() {
@@ -84,7 +47,6 @@ export default function HomePage() {
     mainRef.current?.querySelector<HTMLElement>("h2")?.focus();
   }, [step]);
 
-  // Live reading for the landing page, so the number shown is real, not a placeholder.
   useEffect(() => {
     let cancelled = false;
     void fetchCurrentPm25(DELHI_LOCATION.lat, DELHI_LOCATION.lng).then((value) => {
@@ -145,11 +107,7 @@ export default function HomePage() {
       {error && <div className={styles.errorBanner} role="alert">{error}</div>}
 
       <main id="main-content" ref={mainRef} className={styles.mainContent}>
-        <div
-          className={
-            step === 3 ? styles.contentLayoutFull : step === 0 ? styles.contentLayoutHero : styles.contentLayout
-          }
-        >
+        <div className={step === 3 ? styles.contentLayoutFull : step === 0 ? styles.contentLayoutHero : styles.contentLayout}>
           <div className={styles.panelContainer}>
             {step === 0 && (
               <LandingHero
