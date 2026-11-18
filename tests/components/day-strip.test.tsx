@@ -46,7 +46,7 @@ describe("DayStrip Component", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Your Household's 24-Hour Day" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Your household, hour by hour" })).toBeDefined();
     expect(screen.getByText(/Peak intake at 8 AM \(30.0 µg\)/i)).toBeDefined();
 
     // Verify hidden screen-reader table

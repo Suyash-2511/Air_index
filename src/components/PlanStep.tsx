@@ -14,6 +14,7 @@ export interface PlanStepProps {
   planData: PlanApiResponse;
   household: Household;
   onBack: () => void;
+  onDoseChange?: (currentDose: number, baselineTotal: number) => void;
 }
 
 function useCountUp(target: number, durationMs = 900): number {
@@ -43,11 +44,11 @@ function useCountUp(target: number, durationMs = 900): number {
 
 /**
  * Step 3: Your plan.
- * Displays the asymmetric 2-column layout with count-up headline reveal,
- * ranked change cards with instant zero-fetch recomputation, 24h day strip,
- * and an interactive grounded Q&A panel.
+ * Displays the asymmetric layout with count-up headline reveal,
+ * ranked glass change cards with instant zero-fetch recomputation,
+ * and 24h day strip in sync with the 3D smog sphere.
  */
-export function PlanStep({ planData, household, onBack }: PlanStepProps) {
+export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStepProps) {
   const [activeIds, setActiveIds] = useState<string[]>([]);
 
   const forecastMap: DayForecast = useMemo(
@@ -58,7 +59,6 @@ export function PlanStep({ planData, household, onBack }: PlanStepProps) {
   const baselineTotal = Math.round(planData.baselineTotal);
   const animatedBaseline = useCountUp(baselineTotal);
 
-  // Maximum potential savings when all suggested changes are active
   const maxPotentialSavingsPct = useMemo(() => {
     const allIds = planData.ranked.map((r) => r.id);
     const combinedAll = combineInterventions(household, forecastMap, allIds);
@@ -67,7 +67,6 @@ export function PlanStep({ planData, household, onBack }: PlanStepProps) {
     return planData.baselineTotal > 0 ? Math.round((saved / planData.baselineTotal) * 100) : 0;
   }, [household, forecastMap, planData]);
 
-  // Current client-side combined doses based on active toggles
   const currentDoses: readonly DoseBreakdown[] = useMemo(() => {
     if (activeIds.length === 0) return planData.baseline;
     return combineInterventions(household, forecastMap, activeIds);
@@ -77,6 +76,10 @@ export function PlanStep({ planData, household, onBack }: PlanStepProps) {
   const currentSavedUg = baselineTotal - currentTotal;
   const currentSavedPct = baselineTotal > 0 ? Math.round((currentSavedUg / baselineTotal) * 100) : 0;
 
+  useEffect(() => {
+    onDoseChange?.(currentTotal, baselineTotal);
+  }, [currentTotal, baselineTotal, onDoseChange]);
+
   const handleToggle = (id: string, active: boolean) => {
     setActiveIds((prev) => (active ? [...prev, id] : prev.filter((x) => x !== id)));
   };
@@ -85,15 +88,15 @@ export function PlanStep({ planData, household, onBack }: PlanStepProps) {
     <div className={styles.layout}>
       <div className={styles.leftColumn}>
         <button type="button" onClick={onBack} className={styles.backButton}>
-          ← Edit Household Routine
+          ← Edit household
         </button>
 
         <header className={styles.headlineArea}>
           <div className={styles.headlineItem}>
             <h2 className={styles.headlineMain}>
               Today your household will breathe{" "}
-              <span className="tabular-nums" style={{ color: "var(--amber-deep)" }}>
-                {activeIds.length === 0 ? animatedBaseline : currentTotal} µg
+              <span className="tabular-nums" style={{ color: "var(--amber-deep)", whiteSpace: "nowrap" }}>
+                {(activeIds.length === 0 ? animatedBaseline : currentTotal).toLocaleString("en-IN")} µg
               </span>{" "}
               of PM2.5.
             </h2>
@@ -103,7 +106,7 @@ export function PlanStep({ planData, household, onBack }: PlanStepProps) {
               {activeIds.length === 0 ? (
                 <>These changes could cut that by up to <span className="tabular-nums">{maxPotentialSavingsPct}%</span>.</>
               ) : (
-                <>Cutting exposure by <span className="tabular-nums">{currentSavedPct}%</span> ({currentSavedUg} µg saved) with {activeIds.length} active change{activeIds.length > 1 ? "s" : ""}.</>
+                <>Cutting exposure by <span className="tabular-nums" style={{ color: "var(--teal)" }}>{currentSavedPct}%</span> ({currentSavedUg} µg saved) with {activeIds.length} active change{activeIds.length > 1 ? "s" : ""}.</>
               )}
             </p>
           </div>
@@ -111,7 +114,7 @@ export function PlanStep({ planData, household, onBack }: PlanStepProps) {
 
         <section className={styles.cardsSection} aria-labelledby="ranked-changes-title">
           <h3 id="ranked-changes-title" className={styles.cardsTitle}>
-            Ranked Changes for Today ({planData.ranked.length})
+            Changes, ranked by what they save ({planData.ranked.length})
           </h3>
           {planData.ranked.length === 0 ? (
             <p className={styles.emptyCards}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { IconCheck } from "./icons";
 import styles from "./StepNav.module.css";
 
 /** Step number in the 3-step Saans workflow. */
@@ -18,6 +19,7 @@ const STEPS = [
 
 /**
  * Accessible step progress indicator with aria-current marking the active stage.
+ * Uses 1.5px stroke check icon on completed steps without emojis.
  */
 export function StepNav({ currentStep }: StepNavProps) {
   return (
@@ -42,7 +44,7 @@ export function StepNav({ currentStep }: StepNavProps) {
               aria-current={isActive ? "step" : undefined}
             >
               <span className={styles.stepNumber} aria-hidden="true">
-                {isCompleted ? "✓" : s.step}
+                {isCompleted ? <IconCheck size={12} /> : s.step}
               </span>
               <span>{s.label}</span>
               {idx < STEPS.length - 1 && <span className={styles.separator} aria-hidden="true">/</span>}

@@ -1,76 +1,94 @@
 :root {
   /* Spacing Scale */
   --space-4: 4px;
+  --space-6: 6px;
   --space-8: 8px;
   --space-12: 12px;
   --space-16: 16px;
+  --space-20: 20px;
   --space-24: 24px;
   --space-32: 32px;
   --space-48: 48px;
   --space-64: 64px;
   --space-96: 96px;
 
-  /* Border Radius */
-  --radius: 4px;
+  /* Border Radii */
+  --radius-panel: 14px;
+  --radius-btn: 8px;
+  --radius-sm: 4px;
 
   /* Motion Tokens */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-move: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
   --duration-short: 200ms;
   --duration-normal: 400ms;
   --duration-reveal: 900ms;
-  --duration-strip: 600ms;
+  --duration-move: 1600ms;
 
-  /* Palette - Light Theme */
-  --paper: #F5F1E8;
-  --paper-raised: #FBF8F2;
-  --rule: #DCD4C4;
-  --ink: #1E1B16;
-  --ink-soft: #5A5247;
-  --amber-soft: #F2DFC0;
-  --amber: #B5651D;
-  --amber-deep: #7A3F0E;
-  --teal: #2F6B66;
-  --teal-soft: #D6E6E3;
+  /* Phase 3R-EARTH Palette: Exactly as specified */
+  --sky-0: #07090C;
+  --sky-1: #0F131A;
+  --rule: #1E2530;
+  --ink: #ECEEF0;
+  --ink-2: #9AA3AE;
+  --smog: #E39B4C;
+  --smog-deep: #C17A2E;
+  --smog-soft: #2A1E12;
+  --clean: #6FD3C1;
+  --atmos: #8FC8E8;
+  --glass: rgba(236, 238, 240, 0.05);
+  --glass-edge: rgba(236, 238, 240, 0.12);
+  --glass-fallback: #0F131A;
+  --glass-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.6);
+  --halo: rgba(143, 200, 232, 0.07);
+
+  /* Convenience aliases for shared components */
+  --haze-0: var(--sky-0);
+  --haze-1: var(--sky-1);
+  --haze-2: var(--rule);
+  --amber: var(--smog);
+  --amber-deep: var(--smog-deep);
+  --amber-soft: var(--smog-soft);
+  --teal: var(--clean);
+  --teal-soft: rgba(111, 211, 193, 0.15);
+  --paper: var(--sky-0);
+  --paper-raised: var(--sky-1);
+  --ink-soft: var(--ink-2);
+  --radius: var(--radius-panel);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #13110E;
-    --paper-raised: #1C1915;
-    --rule: #34302A;
-    --ink: #E9E3D8;
-    --ink-soft: #B3AA9C;
-    --amber-soft: #3A2A18;
-    --amber: #E0A15A;
-    --amber-deep: #F0C48E;
-    --teal: #7FB8B0;
-    --teal-soft: #1F3331;
-  }
-}
-
-[data-theme="dark"] {
-  --paper: #13110E;
-  --paper-raised: #1C1915;
-  --rule: #34302A;
-  --ink: #E9E3D8;
-  --ink-soft: #B3AA9C;
-  --amber-soft: #3A2A18;
-  --amber: #E0A15A;
-  --amber-deep: #F0C48E;
-  --teal: #7FB8B0;
-  --teal-soft: #1F3331;
-}
-
+/*
+ * Light theme: a winter air bulletin printed on warm newsprint. Warm off-white
+ * paper, near-black ink, smog amber for exposure, a deep teal for what you save.
+ * Small amber text always uses --smog-deep, which passes 4.5:1 on paper.
+ */
 [data-theme="light"] {
-  --paper: #F5F1E8;
-  --paper-raised: #FBF8F2;
-  --rule: #DCD4C4;
-  --ink: #1E1B16;
-  --ink-soft: #5A5247;
-  --amber-soft: #F2DFC0;
-  --amber: #B5651D;
-  --amber-deep: #7A3F0E;
-  --teal: #2F6B66;
-  --teal-soft: #D6E6E3;
+  --sky-0: #F6F3EE;
+  --sky-1: #EFEAE2;
+  --rule: #DDD5C8;
+  --ink: #17140F;
+  --ink-2: #5C5449;
+  --smog: #C2611F;
+  --smog-deep: #8E3F0C;
+  --smog-soft: #F6E4D3;
+  --clean: #1F7A6C;
+  --atmos: #6FA8C9;
+  --glass: rgba(255, 252, 247, 0.72);
+  --glass-edge: rgba(255, 255, 255, 0.9);
+  --glass-fallback: #FBF9F5;
+  --glass-shadow: 0 24px 48px -24px rgba(70, 48, 24, 0.22);
+  --halo: rgba(194, 97, 31, 0.10);
+
+  --haze-0: var(--sky-0);
+  --haze-1: var(--sky-1);
+  --haze-2: var(--rule);
+  --amber: var(--smog);
+  --amber-deep: var(--smog-deep);
+  --amber-soft: var(--smog-soft);
+  --teal: var(--clean);
+  --teal-soft: #DCEEEA;
+  --paper: var(--sky-0);
+  --paper-raised: var(--sky-1);
+  --ink-soft: var(--ink-2);
 }

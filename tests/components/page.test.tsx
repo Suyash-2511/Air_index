@@ -9,7 +9,7 @@ import type { PlanApiResponse } from "@/client/types";
 
 expect.extend(matchers);
 
-describe("Complete 3-Step Saans Application Flow", () => {
+describe("Complete Saans Application Flow with Landing Hero and 3 Steps", () => {
   const dummyPlanResponse: PlanApiResponse = {
     baselineTotal: 350,
     baseline: [
@@ -49,22 +49,35 @@ describe("Complete 3-Step Saans Application Flow", () => {
     vi.restoreAllMocks();
   });
 
-  it("completes Step 1 -> Step 2 -> Step 3 with zero axe violations on all 3 steps", async () => {
+  it("completes Landing -> Step 1 -> Step 2 -> Step 3 with zero axe violations on all stages", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/api/plan")) {
         return { ok: true, json: async () => dummyPlanResponse } as Response;
       }
+      if (url.includes("/api/air")) {
+        return { ok: true, json: async () => ({ current: { hour: 9, pm25: 187.4 }, forecast: [] }) } as Response;
+      }
       return { ok: true, json: async () => ({}) } as Response;
     });
 
     const { container } = render(<HomePage />);
 
-    // STEP 1
+    // LANDING HERO
     expect(screen.getByRole("heading", { level: 1, name: "Saans" })).toBeDefined();
-    expect(screen.getByRole("heading", { level: 2, name: "Where are you?" })).toBeDefined();
+    expect(screen.getByRole("heading", { level: 2, name: /What your family actually breathes today/i })).toBeDefined();
+    // The live reading comes from the air endpoint, not a placeholder number
+    expect(await screen.findByLabelText(/New Delhi: PM2.5 187 micrograms per cubic metre/i)).toBeDefined();
 
+    const axeLanding = await axe(container);
+    expect(axeLanding).toHaveNoViolations();
+
+    // Click "Plan today for my home" to transition to Step 1
+    await user.click(screen.getByRole("button", { name: "Plan today for my home" }));
+
+    // STEP 1
+    expect(screen.getByRole("heading", { level: 2, name: "Where are you?" })).toBeDefined();
     const axeStep1 = await axe(container);
     expect(axeStep1).toHaveNoViolations();
 
@@ -76,8 +89,8 @@ describe("Complete 3-Step Saans Application Flow", () => {
     const axeStep2 = await axe(container);
     expect(axeStep2).toHaveNoViolations();
 
-    // Click "Build My Plan →" to transition to Step 3
-    await user.click(screen.getByRole("button", { name: "Build My Plan →" }));
+    // Click "Build my plan" to transition to Step 3
+    await user.click(screen.getByRole("button", { name: "Build my plan" }));
 
     // STEP 3
     expect(await screen.findByRole("heading", { level: 2, name: /Today your household will breathe/i })).toBeDefined();
@@ -85,12 +98,26 @@ describe("Complete 3-Step Saans Application Flow", () => {
     expect(axeStep3).toHaveNoViolations();
   });
 
+  it("allows direct jump to sample family from Landing Hero", async () => {
+    const user = userEvent.setup();
+    render(<HomePage />);
+
+    const sampleFamilyBtn = screen.getByRole("button", { name: "See a sample family" });
+    await user.click(sampleFamilyBtn);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Who lives here?" })).toBeDefined();
+    expect(screen.getByText("Mother")).toBeDefined();
+  });
+
   it("toggles light/dark theme via header toggle button", async () => {
     const user = userEvent.setup();
     render(<HomePage />);
 
-    const themeBtn = screen.getByRole("button", { name: /Dark Mode/i });
-    await user.click(themeBtn);
+    // The app opens in light mode
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+
+    const darkBtn = screen.getByRole("button", { name: /Dark Mode/i });
+    await user.click(darkBtn);
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
 
     const lightBtn = screen.getByRole("button", { name: /Light Mode/i });

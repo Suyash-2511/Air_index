@@ -16,7 +16,7 @@ export interface HomeSetupFormProps {
 export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
   return (
     <div className={styles.container}>
-      <h3 className={styles.title}>Home & Ventilation Setup</h3>
+      <h3 className={styles.title}>Home and ventilation</h3>
       <div className={styles.grid}>
         <div className={styles.field}>
           <label htmlFor="window-habit-select" className={styles.label}>

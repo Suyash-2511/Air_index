@@ -3,20 +3,24 @@
   flex-direction: column;
   gap: var(--space-16);
   padding: var(--space-24);
-  background-color: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  background-color: var(--glass-fallback);
+  background-color: var(--glass);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  border: 1px solid var(--haze-2);
+  border-radius: var(--radius-panel);
+  box-shadow: inset 0 1px 0 0 var(--glass-edge);
 }
 
 .title {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.125rem;
+  font-weight: 500;
   color: var(--ink);
 }
 
 .description {
   font-size: 0.9375rem;
-  color: var(--ink-soft);
+  color: var(--ink-2);
   line-height: 1.5;
 }
 
@@ -28,28 +32,35 @@
 
 .input {
   flex: 1;
-  min-width: 240px;
+  min-width: 220px;
   min-height: 44px;
   padding: var(--space-8) var(--space-12);
-  background-color: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  background-color: var(--haze-1);
+  border: 1px solid var(--haze-2);
+  border-radius: var(--radius-btn);
   color: var(--ink);
+  font-size: 0.9375rem;
+}
+
+.input:focus {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
 }
 
 .button {
   min-height: 44px;
   padding: var(--space-8) var(--space-20);
   background-color: var(--ink);
-  color: var(--paper);
+  color: var(--sky-0);
   border: 1px solid var(--ink);
-  border-radius: var(--radius);
+  border-radius: var(--radius-btn);
   font-weight: 600;
   cursor: pointer;
+  transition: background-color var(--duration-short) var(--ease-out);
 }
 
 .button:hover:not(:disabled) {
-  opacity: 0.9;
+  background-color: var(--smog-deep);
 }
 
 .button:disabled {
@@ -62,11 +73,12 @@
   flex-direction: column;
   gap: var(--space-8);
   padding: var(--space-16);
-  background-color: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  background-color: var(--haze-1);
+  border: 1px solid var(--haze-2);
+  border-radius: var(--radius-sm);
   font-size: 0.9375rem;
   line-height: 1.6;
+  color: var(--ink);
 }
 
 .citations {
@@ -75,21 +87,21 @@
   gap: var(--space-8);
   align-items: center;
   font-size: 0.8125rem;
-  color: var(--ink-soft);
+  color: var(--ink-2);
 }
 
 .citationTag {
   padding: 2px var(--space-8);
   background-color: var(--amber-soft);
   color: var(--amber-deep);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   font-weight: 500;
 }
 
 .disclaimer {
   padding-top: var(--space-12);
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--haze-2);
   font-size: 0.75rem;
-  color: var(--ink-soft);
+  color: var(--ink-2);
   line-height: 1.4;
 }

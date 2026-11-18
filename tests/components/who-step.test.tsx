@@ -51,7 +51,8 @@ describe("WhoStep (Step 2)", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Who lives here?" })).toBeDefined();
-    expect(screen.getByRole("button", { name: "Build My Plan →" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Fill in the form from this" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Build my plan" })).toBeDefined();
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();
@@ -86,7 +87,7 @@ describe("WhoStep (Step 2)", () => {
       />,
     );
 
-    const buildBtn = screen.getByRole("button", { name: "Build My Plan →" });
+    const buildBtn = screen.getByRole("button", { name: "Build my plan" });
     expect(buildBtn.hasAttribute("disabled")).toBe(false);
 
     await user.click(buildBtn);

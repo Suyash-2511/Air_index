@@ -3,9 +3,9 @@
   flex-direction: column;
   gap: var(--space-16);
   padding: var(--space-16);
-  background-color: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  background-color: var(--haze-1);
+  border: 1px solid var(--haze-2);
+  border-radius: var(--radius-panel);
 }
 
 .header {
@@ -18,7 +18,7 @@
 
 .title {
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--ink);
 }
 
@@ -36,19 +36,25 @@
 
 .label {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-family: var(--font-mono), monospace;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--ink-soft);
+  color: var(--ink-2);
 }
 
 .input, .select {
   min-height: 44px;
   padding: var(--space-8) var(--space-12);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  background-color: var(--paper);
+  border: 1px solid var(--haze-2);
+  border-radius: var(--radius-btn);
+  background-color: var(--haze-0);
   color: var(--ink);
+}
+
+.input:focus, .select:focus {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
 }
 
 .sensitivities {
@@ -61,10 +67,11 @@
 .checkboxLabel {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-6);
   font-size: 0.875rem;
   cursor: pointer;
   min-height: 44px;
+  color: var(--ink);
 }
 
 .windowsSection {
@@ -79,9 +86,9 @@
   gap: var(--space-8);
   align-items: center;
   padding: var(--space-8);
-  background-color: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  background-color: var(--haze-0);
+  border: 1px solid var(--haze-2);
+  border-radius: var(--radius-btn);
 }
 
 @media (max-width: 600px) {
@@ -96,19 +103,26 @@
   padding: var(--space-4) var(--space-8);
   font-size: 0.875rem;
   background-color: transparent;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  cursor: pointer;
+  border: 1px solid var(--haze-2);
+  border-radius: var(--radius-btn);
   color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--duration-short) var(--ease-out);
 }
 
 .buttonSmall:hover {
-  background-color: var(--amber-soft);
+  background-color: var(--haze-2);
 }
 
 .buttonDelete {
+  color: var(--ink-2);
+}
+
+.buttonDelete:hover {
   color: var(--amber-deep);
-  border-color: var(--rule);
 }
 
 .errorText {

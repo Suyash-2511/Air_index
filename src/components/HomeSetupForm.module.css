@@ -3,14 +3,14 @@
   flex-direction: column;
   gap: var(--space-16);
   padding: var(--space-16);
-  background-color: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  background-color: var(--haze-1);
+  border: 1px solid var(--haze-2);
+  border-radius: var(--radius-panel);
 }
 
 .title {
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--ink);
 }
 
@@ -28,19 +28,25 @@
 
 .label {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-family: var(--font-mono), monospace;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--ink-soft);
+  color: var(--ink-2);
 }
 
 .select {
   min-height: 44px;
   padding: var(--space-8) var(--space-12);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  background-color: var(--paper);
+  border: 1px solid var(--haze-2);
+  border-radius: var(--radius-btn);
+  background-color: var(--haze-0);
   color: var(--ink);
+}
+
+.select:focus {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
 }
 
 .checkboxGroup {
@@ -49,6 +55,7 @@
   gap: var(--space-8);
   min-height: 44px;
   cursor: pointer;
+  color: var(--ink);
 }
 
 .checkbox {

@@ -93,3 +93,24 @@ export async function askPlanQuestion(
   }
   return (await res.json()) as AskApiResponse;
 }
+
+/**
+ * Current outdoor PM2.5 for a location, used for the live reading on the landing
+ * page. Returns undefined instead of throwing, because the page must still work
+ * when air data is unavailable.
+ */
+export async function fetchCurrentPm25(lat: number, lng: number): Promise<number | undefined> {
+  try {
+    const res = await fetch("/api/air", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat, lng }),
+    });
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as { current?: { pm25?: unknown } };
+    const pm25 = data.current?.pm25;
+    return typeof pm25 === "number" && Number.isFinite(pm25) ? pm25 : undefined;
+  } catch {
+    return undefined;
+  }
+}

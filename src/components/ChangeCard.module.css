@@ -3,14 +3,19 @@
   flex-direction: column;
   gap: var(--space-12);
   padding: var(--space-16);
-  background-color: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  transition: border-color var(--duration-short) var(--ease-out);
+  background-color: var(--glass-fallback);
+  background-color: var(--glass);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  border: 1px solid var(--haze-2);
+  border-radius: var(--radius-panel);
+  box-shadow: inset 0 1px 0 0 var(--glass-edge);
+  transition: border-color var(--duration-short) var(--ease-out), box-shadow var(--duration-short) var(--ease-out);
 }
 
 .cardActive {
   border-color: var(--teal);
+  box-shadow: inset 0 1px 0 0 rgba(124, 196, 183, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 .topRow {
@@ -27,9 +32,10 @@
 }
 
 .title {
-  font-size: 1.125rem;
-  font-weight: 600;
+  font-size: 1.0625rem;
+  font-weight: 500;
   color: var(--ink);
+  margin: 0;
 }
 
 .badges {
@@ -37,22 +43,22 @@
   align-items: center;
   gap: var(--space-8);
   font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-weight: 500;
 }
 
 .effortBadge {
   padding: 2px var(--space-8);
-  background-color: var(--paper);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  color: var(--ink-soft);
+  background-color: var(--haze-1);
+  border: 1px solid var(--haze-2);
+  border-radius: var(--radius-sm);
+  color: var(--ink-2);
 }
 
 .savingsText {
   color: var(--teal);
   font-weight: 600;
+  font-family: var(--font-mono), monospace;
 }
 
 /* Accessible Switch */
@@ -60,66 +66,76 @@
   position: relative;
   width: 48px;
   height: 28px;
-  background-color: var(--rule);
-  border: none;
+  background-color: var(--haze-2);
+  border: 1px solid rgba(255, 246, 232, 0.12);
   border-radius: 14px;
   cursor: pointer;
   padding: 2px;
-  transition: background-color var(--duration-short) var(--ease-out);
+  transition: background-color var(--duration-short) var(--ease-out), border-color var(--duration-short) var(--ease-out);
+  flex-shrink: 0;
 }
 
 .switchButton[aria-checked="true"] {
   background-color: var(--teal);
+  border-color: var(--teal);
 }
 
 .switchHandle {
   display: block;
-  width: 24px;
-  height: 24px;
-  background-color: var(--paper-raised);
+  width: 22px;
+  height: 22px;
+  background-color: var(--ink);
   border-radius: 50%;
   transition: transform var(--duration-short) var(--ease-out);
 }
 
 .switchButton[aria-checked="true"] .switchHandle {
   transform: translateX(20px);
+  background-color: var(--sky-0);
 }
 
 .expandButton {
   background: none;
   border: none;
-  color: var(--ink-soft);
+  color: var(--ink-2);
   font-size: 0.8125rem;
   text-align: left;
   cursor: pointer;
   padding: var(--space-4) 0;
   text-decoration: underline;
+  transition: color var(--duration-short) var(--ease-out);
+}
+
+.expandButton:hover {
+  color: var(--ink);
 }
 
 .details {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-  padding-top: var(--space-12);
-  border-top: 1px solid var(--rule);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--haze-2);
   font-size: 0.875rem;
-  line-height: 1.5;
 }
 
 .whyText {
-  color: var(--ink);
+  color: var(--ink-2);
+  line-height: 1.5;
 }
 
 .stepsList {
-  padding-left: var(--space-24);
-  color: var(--ink-soft);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-left: var(--space-20);
+  color: var(--ink);
 }
 
 .sustainableBox {
-  margin-top: var(--space-4);
   padding: var(--space-8) var(--space-12);
-  background-color: var(--teal-soft);
-  border-radius: var(--radius);
-  color: var(--teal);
+  background-color: rgba(124, 196, 183, 0.1);
+  border-left: 2px solid var(--teal);
   font-size: 0.8125rem;
+  color: var(--teal);
 }

@@ -85,7 +85,7 @@ describe("PlanStep (Step 3)", () => {
     );
 
     expect(screen.getByRole("heading", { name: /Today your household will breathe/i })).toBeDefined();
-    expect(screen.getByRole("heading", { name: /Ranked Changes for Today/i })).toBeDefined();
+    expect(screen.getByRole("heading", { name: /Changes, ranked by what they save/i })).toBeDefined();
     expect(screen.getByRole("switch", { name: "Toggle Keep windows closed" })).toBeDefined();
 
     const results = await axe(container);

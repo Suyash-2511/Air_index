@@ -19,8 +19,8 @@ function formatClockHour(h: number): string {
 
 /**
  * 24-hour visual exposure timeline rendering hourly inhaled PM2.5 doses per member.
- * Displays peak exposure times in plain words, supports scaleY shrink transitions
- * on intervention toggling, and provides an accessible hidden data table for screen readers.
+ * Displays amber intake bars, rule grid, and saved reductions in teal.
+ * Features an accessible hidden data table for screen readers.
  */
 export function DayStrip({
   household,
@@ -28,7 +28,6 @@ export function DayStrip({
   currentDoses,
   hasChangesActive,
 }: DayStripProps) {
-  // Find global maximum single-hour dose to scale bar heights proportionally
   let globalMaxHour = 1;
   for (const b of baselineDoses) {
     for (const hVal of b.byHour) {
@@ -39,7 +38,7 @@ export function DayStrip({
   return (
     <div className={styles.container} aria-labelledby="day-strip-title">
       <h3 id="day-strip-title" className={styles.title}>
-        Your Household's 24-Hour Day
+        Your household, hour by hour
       </h3>
 
       {household.members.map((member, mIdx) => {
@@ -75,15 +74,25 @@ export function DayStrip({
               {Array.from({ length: 24 }, (_, h) => {
                 const hourDose = current?.byHour[h] ?? 0;
                 const baseHourDose = base?.byHour[h] ?? hourDose;
-                const heightPct = Math.min(100, Math.max(4, (hourDose / globalMaxHour) * 100));
-                const isSaved = hasChangesActive && hourDose < baseHourDose;
+                const heightPct = Math.min(100, Math.max(3, (hourDose / globalMaxHour) * 100));
+                const savedPct = hasChangesActive && baseHourDose > hourDose
+                  ? Math.min(100 - heightPct, ((baseHourDose - hourDose) / globalMaxHour) * 100)
+                  : 0;
 
                 return (
                   <div key={h} className={styles.barCol} title={`${formatClockHour(h)}: ${hourDose.toFixed(1)} µg`}>
-                    <div
-                      className={`${styles.bar} ${isSaved ? styles.barSaved : ""}`}
-                      style={{ height: `${heightPct}%` }}
-                    />
+                    <div className={styles.stackedBar}>
+                      {savedPct > 0 && (
+                        <div
+                          className={styles.barSaved}
+                          style={{ height: `${savedPct}%` }}
+                        />
+                      )}
+                      <div
+                        className={styles.barActive}
+                        style={{ height: `${heightPct}%` }}
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -101,7 +110,6 @@ export function DayStrip({
               Peak intake at {formatClockHour(peakHour)} ({peakValue.toFixed(1)} µg)
             </div>
 
-            {/* Screen reader accessible data table */}
             <table className="sr-only">
               <caption>Hourly inhaled PM2.5 dose breakdown for {member.label}</caption>
               <thead>

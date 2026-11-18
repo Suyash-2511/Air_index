@@ -132,7 +132,7 @@ export function WhoStep({
           disabled={loading || !sentence.trim()}
           className={styles.buttonSecondary}
         >
-          {loading ? "Reading your routine..." : "Parse Household Description"}
+          {loading ? "Reading your routine..." : "Fill in the form from this"}
         </button>
       </div>
 
@@ -162,7 +162,7 @@ export function WhoStep({
 
         {household.members.length < 8 && (
           <button type="button" onClick={addMember} className={styles.buttonSecondary}>
-            + Add Family Member
+            + Add another person
           </button>
         )}
       </div>
@@ -171,7 +171,7 @@ export function WhoStep({
 
       <div className={styles.footerActions}>
         <button type="button" onClick={onBack} className={styles.buttonSecondary}>
-          ← Back to Location
+          ← Change area
         </button>
         <button
           type="button"
@@ -179,7 +179,7 @@ export function WhoStep({
           onClick={() => onBuildPlan(household)}
           className={styles.buttonPrimary}
         >
-          Build My Plan →
+          Build my plan
         </button>
       </div>
     </section>

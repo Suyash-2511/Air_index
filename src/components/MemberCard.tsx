@@ -11,6 +11,7 @@ import {
   type HouseholdMember,
   type Sensitivity,
 } from "@/lib/types";
+import { IconCross } from "./icons";
 import styles from "./MemberCard.module.css";
 
 const COMMON_DURATIONS = [30, 60, 90, 120, 180, 240, 300, 360, 480, 540, 600, 720, 840, 960] as const;
@@ -58,7 +59,7 @@ export function MemberCard({ member, onUpdate, onRemove, canRemove }: MemberCard
         <h3 className={styles.title}>{member.label}</h3>
         {canRemove && onRemove && (
           <button type="button" onClick={onRemove} className={`${styles.buttonSmall} ${styles.buttonDelete}`} aria-label={`Remove ${member.label}`}>
-            Remove Person
+            Remove
           </button>
         )}
       </div>
@@ -105,7 +106,7 @@ export function MemberCard({ member, onUpdate, onRemove, canRemove }: MemberCard
       <div className={styles.windowsSection}>
         <div className={styles.header}>
           <span className={styles.label}>Daily Routine ({totalMinutes}m / 1440m)</span>
-          <button type="button" onClick={addWindow} className={styles.buttonSmall}>+ Add Window</button>
+          <button type="button" onClick={addWindow} className={styles.buttonSmall}>+ Add time block</button>
         </div>
 
         {member.windows.map((w, idx) => (
@@ -149,7 +150,7 @@ export function MemberCard({ member, onUpdate, onRemove, canRemove }: MemberCard
 
             {member.windows.length > 1 && (
               <button type="button" onClick={() => removeWindow(idx)} className={`${styles.buttonSmall} ${styles.buttonDelete}`} aria-label={`Delete window ${idx + 1}`}>
-                ✕
+                <IconCross size={12} />
               </button>
             )}
           </div>
