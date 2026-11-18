@@ -18,15 +18,14 @@
   line-height: 1.5;
   color: var(--ink);
   background-color: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-btn);
-  box-shadow: 0 1px 0 var(--glass-edge) inset;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
   transition: border-color var(--duration-short) var(--ease-out), box-shadow var(--duration-short) var(--ease-out);
 }
 
 .input::placeholder { color: var(--ink-2); opacity: 0.75; }
 .input:hover { border-color: var(--ink-2); }
-.input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 4px var(--halo); }
+.input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--smog-soft); }
 
 .searchIcon {
   position: absolute;

@@ -4,20 +4,25 @@ import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { computePlan, fetchCurrentPm25 } from "@/client/api";
 import type { PlanApiResponse } from "@/client/types";
-import { IconMoon, IconSun } from "@/components/icons";
 import { LandingHero } from "@/components/LandingHero";
+import { Masthead } from "@/components/Masthead";
 import { PlanStep } from "@/components/PlanStep";
 import { getSampleHousehold } from "@/components/sampleHousehold";
 import { StepNav, type StepNumber } from "@/components/StepNav";
+import { useBrowserLocation } from "@/components/useBrowserLocation";
 import { WhereStep } from "@/components/WhereStep";
 import { getDefaultHousehold, WhoStep } from "@/components/WhoStep";
+import { StaticFallback } from "@/components/scene/StaticFallback";
 import type { Household, Location } from "@/lib/types";
 import styles from "./page.module.css";
 
-const AirScene = dynamic(
-  () => import("@/components/scene/AirScene").then((m) => m.AirScene),
-  { ssr: false }
-);
+const loadScene = () => import("@/components/scene/AirScene").then((m) => m.AirScene);
+
+// The still Earth shows at first paint while the 3D chunk streams in behind it.
+const AirScene = dynamic(loadScene, { ssr: false, loading: () => <StaticFallback /> });
+
+// Start fetching the 3D chunk as soon as this module runs, not after hydration.
+if (typeof window !== "undefined") void loadScene();
 
 const DELHI_LOCATION: Location = {
   lat: 28.6139,
@@ -37,6 +42,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [landingPm25, setLandingPm25] = useState<number | undefined>();
+  const [liveLocation, setLiveLocation] = useState<Location | undefined>();
   const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -47,15 +53,21 @@ export default function HomePage() {
     mainRef.current?.querySelector<HTMLElement>("h2")?.focus();
   }, [step]);
 
+  // Live location is the default; New Delhi stands in until it is known or when it is blocked.
+  useBrowserLocation({ onLocationResolved: setLiveLocation });
+  const homeLat = liveLocation?.lat ?? DELHI_LOCATION.lat;
+  const homeLng = liveLocation?.lng ?? DELHI_LOCATION.lng;
+
   useEffect(() => {
     let cancelled = false;
-    void fetchCurrentPm25(DELHI_LOCATION.lat, DELHI_LOCATION.lng).then((value) => {
+    setLandingPm25(undefined);
+    void fetchCurrentPm25(homeLat, homeLng).then((value) => {
       if (!cancelled) setLandingPm25(value);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [homeLat, homeLng]);
 
   const toggleTheme = () => setTheme((p) => (p === "light" ? "dark" : "light"));
 
@@ -92,16 +104,7 @@ export default function HomePage() {
 
   return (
     <div className={styles.pageWrapper}>
-      <header className={styles.header}>
-        <div className={styles.brand}>
-          <h1 className={styles.siteTitle}>Saans</h1>
-          <span className={styles.siteSubtitle}>Winter air, measured for your family</span>
-        </div>
-        <button type="button" onClick={toggleTheme} className={styles.themeButton}>
-          {theme === "light" ? <IconMoon size={18} /> : <IconSun size={18} />}
-          <span className="sr-only">{theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}</span>
-        </button>
-      </header>
+      <Masthead theme={theme} onToggleTheme={toggleTheme} compact={step > 0} />
 
       {step > 0 && <StepNav currentStep={step as StepNumber} />}
       {error && <div className={styles.errorBanner} role="alert">{error}</div>}
@@ -112,6 +115,7 @@ export default function HomePage() {
             {step === 0 && (
               <LandingHero
                 livePm25={currentPm25}
+                {...(liveLocation ? { cityName: liveLocation.label.split(",")[0] ?? liveLocation.label, isLive: true } : {})}
                 onPlanHome={() => setStep(1)}
                 onSampleFamily={() => handleLocationConfirmed(DELHI_LOCATION, true)}
               />
@@ -125,7 +129,7 @@ export default function HomePage() {
             )}
 
             {!loading && step === 1 && (
-              <WhereStep initialLocation={location} onLocationConfirmed={handleLocationConfirmed} />
+              <WhereStep initialLocation={location} liveLocation={liveLocation} onLocationConfirmed={handleLocationConfirmed} />
             )}
 
             {!loading && step === 2 && location && (
@@ -150,9 +154,9 @@ export default function HomePage() {
 
           <div className={step === 3 ? styles.sceneContainerCorner : styles.sceneContainer}>
             <AirScene
-              lat={location?.lat ?? 28.6139}
-              lng={location?.lng ?? 77.209}
-              cityName={location?.label ?? "New Delhi"}
+              lat={location?.lat ?? homeLat}
+              lng={location?.lng ?? homeLng}
+              cityName={location?.label ?? liveLocation?.label ?? "New Delhi"}
               pm25={currentPm25}
               density={doseDensity}
               focused={step > 0 && location !== undefined}

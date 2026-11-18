@@ -1,7 +1,9 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { IconArrowRight } from "./icons";
 import styles from "./LandingHero.module.css";
+import { StationReading } from "./StationReading";
 
 export interface LandingHeroProps {
   onPlanHome: () => void;
@@ -9,6 +11,8 @@ export interface LandingHeroProps {
   /** Live outdoor PM2.5; undefined while loading or when air data is unavailable. */
   livePm25?: number | undefined;
   cityName?: string;
+  /** True when the reading is for the visitor's own location rather than the default city. */
+  isLive?: boolean;
 }
 
 const STEPS = [
@@ -18,38 +22,14 @@ const STEPS = [
 ] as const;
 
 /**
- * Landing introduction: a live air reading, the headline, and the two ways in.
- * The reading is only shown once it has really loaded, never as a placeholder number.
+ * Landing introduction, set as the front page of a bulletin: a kicker, the headline,
+ * today's station reading, and the two ways in.
  */
-export function LandingHero({ onPlanHome, onSampleFamily, livePm25, cityName = "New Delhi" }: LandingHeroProps) {
-  const hasReading = livePm25 !== undefined;
-  const reading = hasReading ? Math.round(livePm25) : undefined;
-
+export function LandingHero({ onPlanHome, onSampleFamily, livePm25, cityName = "New Delhi", isLive = false }: LandingHeroProps) {
   return (
     <section className={styles.heroSection} aria-labelledby="landing-headline">
       <div className={styles.content}>
-        <p
-          className={styles.eyebrow}
-          aria-live="polite"
-          aria-label={
-            hasReading
-              ? `Outdoor air now in ${cityName}: PM2.5 ${reading} micrograms per cubic metre`
-              : `Loading outdoor air for ${cityName}`
-          }
-        >
-          <span className={styles.dot} aria-hidden="true" />
-          <span className={styles.city}>{cityName}</span>
-          <span className={styles.divider} aria-hidden="true" />
-          <span className={styles.reading}>
-            {hasReading ? (
-              <>
-                PM2.5 <strong>{reading}</strong> <span className={styles.unit}>µg/m³</span>
-              </>
-            ) : (
-              "Reading the air…"
-            )}
-          </span>
-        </p>
+        <p className={styles.kicker}>Today&apos;s field note</p>
 
         <h2 id="landing-headline" className={styles.headline}>
           <span className={styles.maskLine}>
@@ -79,9 +59,11 @@ export function LandingHero({ onPlanHome, onSampleFamily, livePm25, cityName = "
           </button>
         </div>
 
+        <StationReading livePm25={livePm25} cityName={cityName} isLive={isLive} />
+
         <ol className={styles.steps} aria-label="How it works">
-          {STEPS.map((s) => (
-            <li key={s.n} className={styles.step}>
+          {STEPS.map((s, i) => (
+            <li key={s.n} className={styles.step} style={{ "--i": i } as CSSProperties}>
               <span className={styles.stepNumber} aria-hidden="true">
                 {s.n}
               </span>

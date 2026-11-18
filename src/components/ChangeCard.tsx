@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import type { RankedAction } from "@/client/types";
+import { toSentenceCase } from "./labels";
 import styles from "./ChangeCard.module.css";
 
 /** Props for the interactive Ranked Change Card. */
@@ -29,7 +30,7 @@ export function ChangeCard({ action, isActive, onToggle, rank }: ChangeCardProps
   const switchId = useId();
   const detailsId = useId();
 
-  const title = action.explanation?.title ?? action.id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const title = toSentenceCase(action.explanation?.title ?? action.id.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()));
   const savedUg = Math.round(action.savedMicrograms);
   const savedPct = Math.round(action.savedPercent);
 

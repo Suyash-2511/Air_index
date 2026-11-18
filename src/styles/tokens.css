@@ -11,6 +11,7 @@
   --space-48: 48px;
   --space-64: 64px;
   --space-96: 96px;
+  --space-128: 128px;
 
   /* Border Radii */
   --radius-panel: 14px;
@@ -25,11 +26,25 @@
   --duration-normal: 400ms;
   --duration-reveal: 900ms;
   --duration-move: 1600ms;
+  --stagger: 70ms;
+
+  /* Type scale: bulletin hierarchy (display, figure, lead, body, label) */
+  --fs-display: clamp(48px, 6.4vw, 96px);
+  --fs-figure: clamp(64px, 7vw, 104px);
+  --fs-title: clamp(32px, 3.6vw, 48px);
+  --fs-lead: 18px;
+  --fs-body: 15px;
+  --fs-label: 12px;
+  --globe-solid: 80%;
+  --globe-clear: 97%;
+  --tracking-display: -0.025em;
+  --tracking-label: 0.14em;
 
   /* Phase 3R-EARTH Palette: Exactly as specified */
   --sky-0: #07090C;
   --sky-1: #0F131A;
   --rule: #1E2530;
+  --rule-strong: #3A4556;
   --ink: #ECEEF0;
   --ink-2: #9AA3AE;
   --smog: #E39B4C;
@@ -71,6 +86,7 @@
   --sky-0: #F6F3EE;
   --sky-1: #EFEAE2;
   --rule: #DDD5C8;
+  --rule-strong: #B9AD9B;
   --ink: #17140F;
   --ink-2: #5C5449;
   --smog: #C2611F;

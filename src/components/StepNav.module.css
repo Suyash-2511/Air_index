@@ -1,14 +1,11 @@
+/* Progress is a three-column contents strip; the active column's rule draws in. */
 .nav {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-12) 0;
-  border-bottom: 1px solid var(--rule);
   margin-bottom: var(--space-32);
 }
 
 .stepList {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   list-style: none;
   gap: var(--space-16);
   padding: 0;
@@ -16,46 +13,50 @@
 }
 
 .stepItem {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-8);
-  font-size: 0.875rem;
+  padding-top: var(--space-12);
+  font-size: var(--fs-body);
   color: var(--ink-soft);
 }
 
-.stepActive {
-  color: var(--ink);
-  font-weight: 600;
+.stepItem::before,
+.stepItem::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--rule-strong);
 }
 
-.stepCompleted {
-  color: var(--teal);
+.stepItem::after {
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--duration-reveal) var(--ease-out);
 }
+
+.stepActive { color: var(--ink); font-weight: 600; }
+.stepActive::after { transform: scaleX(1); }
+.stepCompleted { color: var(--teal); }
+.stepCompleted::after { background: var(--teal); transform: scaleX(1); }
 
 .stepNumber {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 1px solid var(--rule);
-  font-size: 0.75rem;
-  background-color: var(--paper-raised);
+  font-family: var(--font-mono), monospace;
+  font-size: var(--fs-label);
+  letter-spacing: 0.08em;
+  color: var(--smog-deep);
 }
 
-.stepActive .stepNumber {
-  background-color: var(--ink);
-  color: var(--paper);
-  border-color: var(--ink);
-}
+.stepCompleted .stepNumber { color: var(--teal); }
+.separator { display: none; }
 
-.stepCompleted .stepNumber {
-  background-color: var(--teal);
-  color: var(--paper);
-  border-color: var(--teal);
-}
-
-.separator {
-  color: var(--rule);
+@media (max-width: 600px) {
+  .stepItem { flex-direction: column; gap: var(--space-4); font-size: 13px; }
 }

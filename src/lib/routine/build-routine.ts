@@ -103,7 +103,7 @@ export function buildRoutine(
         items.push({
           startHour: start, endHour: end, kind: "commute",
           title: commute ? titleFor(commute.id) : COMMUTE_FALLBACK[w.activity] ?? "Wear an N95 mask outside",
-          detail: `${member.label}'s commute: outdoor PM2.5 is about ${pm25} µg/m³.`,
+          detail: `${member.label.trim().toLowerCase() === "you" ? "Your" : `${member.label}'s`} commute: outdoor PM2.5 is about ${pm25} µg/m³.`,
           pm25, memberIds: [member.id], interventionId: commute?.id,
           savedMicrograms: commute?.savedMicrograms, reducesOwnEmissions: commute?.reducesOwnEmissions ?? false,
         });

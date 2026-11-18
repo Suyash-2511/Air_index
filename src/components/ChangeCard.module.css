@@ -5,11 +5,11 @@
   padding: var(--space-20);
   background-color: var(--surface);
   border: 1px solid var(--rule);
-  border-radius: var(--radius-panel);
+  border-radius: var(--radius-sm);
   transition: border-color var(--duration-short) var(--ease-out), box-shadow var(--duration-normal) var(--ease-out),
     transform var(--duration-normal) var(--ease-out), background-color var(--duration-normal) var(--ease-out);
 }
-.card:hover { border-color: var(--ink-2); transform: translateY(-2px); box-shadow: var(--glass-shadow); }
+.card:hover { border-color: var(--ink); transform: translateY(-2px); }
 
 .cardActive { border-color: var(--clean); background-color: var(--teal-soft); }
 .cardActive:hover { border-color: var(--clean); }
@@ -20,9 +20,9 @@
   flex: none;
   width: 2ch;
   font-family: var(--font-display), Georgia, serif;
-  font-size: 2rem;
+  font-size: 2.5rem;
   line-height: 1;
-  color: var(--rule);
+  color: var(--rule-strong);
   font-variant-numeric: lining-nums tabular-nums;
   transition: color var(--duration-normal) var(--ease-out);
 }
@@ -36,7 +36,7 @@
 
 .effortBadge {
   padding: 2px var(--space-8);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background-color: var(--field);
   border: 1px solid var(--rule);
   color: var(--ink-2);
@@ -47,7 +47,7 @@
 
 .savingsText { color: var(--clean); font-weight: 600; font-variant-numeric: tabular-nums; }
 
-.meter { height: 3px; border-radius: 999px; background: var(--rule); overflow: hidden; }
+.meter { height: 3px; background: var(--rule); overflow: hidden; }
 .meter span {
   display: block; height: 100%; background: var(--clean); transform-origin: left;
   animation: grow 900ms var(--ease-out) both 200ms;

@@ -11,6 +11,7 @@ import { ChangeCard } from "./ChangeCard";
 import { DayStrip } from "./DayStrip";
 import { PlanActions } from "./PlanActions";
 import { RoutineTimeline } from "./RoutineTimeline";
+import { useCountUp } from "./useCountUp";
 import styles from "./PlanStep.module.css";
 
 /** Props for Step 3: Your plan. */
@@ -19,31 +20,6 @@ export interface PlanStepProps {
   household: Household;
   onBack: () => void;
   onDoseChange?: (currentDose: number, baselineTotal: number) => void;
-}
-
-function useCountUp(target: number, durationMs = 900): number {
-  const [val, setVal] = useState(0);
-  useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      typeof window.matchMedia !== "function" ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      setVal(target);
-      return;
-    }
-    const start = performance.now();
-    let frameId: number;
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - start) / durationMs);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setVal(Math.round(eased * target));
-      if (progress < 1) frameId = requestAnimationFrame(tick);
-    };
-    frameId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frameId);
-  }, [target, durationMs]);
-  return val;
 }
 
 /**
@@ -61,7 +37,7 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
   );
 
   const baselineTotal = Math.round(planData.baselineTotal);
-  const animatedBaseline = useCountUp(baselineTotal);
+  const animatedBaseline = useCountUp(baselineTotal, { delay: 500, duration: 1700 }) ?? 0;
 
   const maxPotentialSavingsPct = useMemo(() => {
     const allIds = planData.ranked.map((r) => r.id);
@@ -94,39 +70,48 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
 
   return (
     <div className={styles.layout}>
-      <div className={styles.leftColumn}>
-        <button type="button" onClick={onBack} className={styles.backButton}>
-          ← Edit household
-        </button>
+      <button type="button" onClick={onBack} className={styles.backButton}>
+        ← Edit household
+      </button>
 
-        <header className={styles.headlineArea}>
-          <div className={styles.headlineItem}>
-            <h2 className={styles.headlineMain}>
-              Today your household will breathe{" "}
-              <span className="tabular-nums" style={{ color: "var(--amber-deep)", whiteSpace: "nowrap" }}>
-                {(activeIds.length === 0 ? animatedBaseline : currentTotal).toLocaleString("en-IN")} µg
-              </span>{" "}
-              of PM2.5.
-            </h2>
-          </div>
-          <div className={styles.headlineItem}>
-            <p className={styles.headlineCut}>
-              {activeIds.length === 0 ? (
-                <>These changes could cut that by up to <span className="tabular-nums">{maxPotentialSavingsPct}%</span>.</>
-              ) : (
-                <>Cutting exposure by <span className="tabular-nums" style={{ color: "var(--teal)" }}>{currentSavedPct}%</span> ({currentSavedUg} µg saved) with {activeIds.length} active change{activeIds.length > 1 ? "s" : ""}.</>
-              )}
-            </p>
-          </div>
-        </header>
+      <header className={styles.headlineArea}>
+        <p className={styles.kicker}>Entry 03 · Today&apos;s dose</p>
+        <h2 className={styles.headlineMain}>
+          <span className={styles.lead}>Today your household will breathe</span>{" "}
+          <span className={styles.figureMask}>
+            <span className={styles.figure}>
+              {(activeIds.length === 0 ? animatedBaseline : currentTotal).toLocaleString("en-IN")}
+              <span className={styles.unit}> µg</span>
+            </span>
+          </span>{" "}
+          <span className={styles.lead}>of PM2.5.</span>
+        </h2>
+        <div className={styles.meter} aria-hidden="true">
+          <span className={styles.meterFill} style={{ transform: `scaleX(${baselineTotal > 0 ? currentTotal / baselineTotal : 1})` }} />
+        </div>
+        <div className={styles.meterLabels} aria-hidden="true">
+          <span>With your changes</span>
+          <span>Baseline {baselineTotal.toLocaleString("en-IN")} µg</span>
+        </div>
+        <p className={styles.headlineCut}>
+          {activeIds.length === 0 ? (
+            <>These changes could cut that by up to <span className="tabular-nums">{maxPotentialSavingsPct}%</span>.</>
+          ) : (
+            <>Cutting exposure by <span className="tabular-nums">{currentSavedPct}%</span> ({currentSavedUg} µg saved) with {activeIds.length} active change{activeIds.length > 1 ? "s" : ""}.</>
+          )}
+        </p>
+      </header>
 
+      <div className={styles.fullRow}>
         <PlanActions
           planData={planData}
           household={household}
           currentTotal={currentTotal}
           routine={routineItems}
         />
+      </div>
 
+      <div className={styles.leftColumn}>
         <RoutineTimeline
           items={routineItems}
           areaLabel={household.location.label}
@@ -156,7 +141,6 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
           )}
         </section>
 
-        <AskPanel household={household} />
       </div>
 
       <div className={styles.rightColumn}>
@@ -172,6 +156,8 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
           currentDoses={currentDoses}
           hasChangesActive={activeIds.length > 0}
         />
+
+        <AskPanel household={household} />
       </div>
     </div>
   );

@@ -78,7 +78,7 @@ export function RoutineTimeline({
             <li
               key={`routine-${item.startHour}-${item.endHour}-${item.kind}-${idx}`}
               className={styles.timelineItem}
-              style={{ animationDelay: `${idx * 60}ms` }}
+              style={{ animationDelay: `${700 + idx * 80}ms` }}
             >
               <div className={`${styles.timeCol} tabular-nums`}>
                 {formatHourRange(item.startHour, item.endHour)}

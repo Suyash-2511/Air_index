@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { preload } from "react-dom";
 import type { ReactNode } from "react";
 import "@/styles/globals.css";
 
@@ -30,6 +31,12 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  // Hint the globe images early so they are in flight before the 3D scene mounts.
+  preload("/textures/earth-static.webp", { as: "image", fetchPriority: "high" });
+  preload("/textures/earth-day-low.webp", { as: "image", crossOrigin: "anonymous" });
+  preload("/textures/earth-night-low.webp", { as: "image", crossOrigin: "anonymous" });
+  preload("/textures/earth-day.webp", { as: "image", crossOrigin: "anonymous", fetchPriority: "low" });
+  preload("/textures/earth-night.webp", { as: "image", crossOrigin: "anonymous", fetchPriority: "low" });
   return (
     <html
       lang="en"

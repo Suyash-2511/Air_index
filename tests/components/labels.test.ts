@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ACTIVITIES, AGE_BANDS, SENSITIVITIES } from "@/lib/types";
-import { ACTIVITY_LABELS, AGE_BAND_LABELS, SENSITIVITY_LABELS, formatClock, formatDuration } from "@/components/labels";
+import { ACTIVITY_LABELS, AGE_BAND_LABELS, SENSITIVITY_LABELS, formatClock, formatDuration, toSentenceCase } from "@/components/labels";
 
 describe("plain-language labels", () => {
   it("names every activity, age group and condition", () => {
@@ -22,4 +22,11 @@ describe("plain-language labels", () => {
     expect(formatClock(12)).toBe("12 PM");
     expect(formatClock(23)).toBe("11 PM");
   });
+
+  it("sentence-cases titles but keeps acronyms", () => {
+    expect(toSentenceCase("Add Bedroom Purifier")).toBe("Add bedroom purifier");
+    expect(toSentenceCase("Wear An N95 Mask")).toBe("Wear an N95 mask");
+    expect(toSentenceCase("Run HEPA Purifier")).toBe("Run HEPA purifier");
+  });
 });
+

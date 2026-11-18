@@ -1,22 +1,23 @@
 .card {
   display: grid;
-  gap: var(--space-20);
-  padding: var(--space-20);
-  background: var(--glass-fallback);
+  gap: var(--space-24);
+  padding: var(--space-24);
+  background: var(--surface);
   border: 1px solid var(--rule);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--glass-shadow);
+  border-top: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  animation: rise 600ms var(--ease-out) both;
 }
 
 .header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-8); }
 .title {
   margin: 0;
   font-family: var(--font-display), Georgia, serif;
-  font-size: 1.5rem; font-weight: 400; letter-spacing: -0.01em; color: var(--ink);
+  font-size: 2rem; font-weight: 400; letter-spacing: var(--tracking-display); line-height: 1.1; color: var(--ink);
 }
 .remove {
   min-height: 36px; padding: 0 var(--space-12);
-  border: 1px solid transparent; border-radius: 999px; background: transparent;
+  border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent;
   font-size: 0.875rem; color: var(--ink-2); cursor: pointer;
   transition: background-color var(--duration-short) var(--ease-out), color var(--duration-short) var(--ease-out);
 }
@@ -27,7 +28,7 @@
 .label {
   padding: 0;
   font-family: var(--font-mono), monospace; font-size: 0.6875rem; font-weight: 500;
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2);
+  letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-2);
 }
 .input {
   width: 100%; min-height: 44px; padding: var(--space-8) var(--space-12);
@@ -42,7 +43,7 @@
 .chip {
   display: inline-flex; align-items: center; gap: var(--space-8);
   min-height: 40px; padding: 0 var(--space-12);
-  border: 1px solid var(--rule); border-radius: 999px; background: var(--field);
+  border: 1px solid var(--rule-strong); border-radius: var(--radius-sm); background: var(--field);
   font-size: 0.875rem; color: var(--ink-2); cursor: pointer;
   transition: background-color var(--duration-short) var(--ease-out), border-color var(--duration-short) var(--ease-out), color var(--duration-short) var(--ease-out);
 }
@@ -54,7 +55,7 @@
 .dayHead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
 .planned { font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--smog-deep); }
 .planned[data-complete="true"] { color: var(--clean); }
-.progress { height: 4px; border-radius: 999px; background: var(--rule); overflow: hidden; }
+.progress { height: 3px; background: var(--rule); overflow: hidden; }
 .progress span {
   display: block; height: 100%; background: var(--clean); transform-origin: left;
   transition: transform var(--duration-normal) var(--ease-out);
@@ -64,7 +65,7 @@
 
 .add {
   min-height: 44px;
-  border: 1px dashed var(--rule); border-radius: var(--radius-btn); background: transparent;
+  border: 1px dashed var(--rule-strong); border-radius: var(--radius-btn); background: transparent;
   font-size: 0.9375rem; color: var(--ink-2); cursor: pointer;
   transition: border-color var(--duration-short) var(--ease-out), color var(--duration-short) var(--ease-out), background-color var(--duration-short) var(--ease-out);
 }
@@ -72,6 +73,11 @@
 .add:active { transform: scale(0.99); }
 
 .errorText { margin: 0; font-size: 0.8125rem; color: var(--smog-deep); }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .progress span { transition: none; }

@@ -19,6 +19,8 @@ export const DELHI_DEMO_LOCATION: Location = {
 /** Props for Step 1 location selector. */
 export interface WhereStepProps {
   initialLocation?: Location | undefined;
+  /** The visitor's live location, used as the default when they have not chosen another. */
+  liveLocation?: Location | undefined;
   onLocationConfirmed: (location: Location, isDemo?: boolean | undefined) => void;
 }
 
@@ -34,23 +36,36 @@ function generateSessionToken(): string {
  * Captures the user's location via Places autocomplete, browser geolocation,
  * or the one-click New Delhi sample demo.
  */
-export function WhereStep({ initialLocation, onLocationConfirmed }: WhereStepProps) {
+export function WhereStep({ initialLocation, liveLocation, onLocationConfirmed }: WhereStepProps) {
   const [query, setQuery] = useState(initialLocation?.label ?? "");
   const [selectedLocation, setSelectedLocation] = useState<Location | undefined>(initialLocation);
   const [suggestions, setSuggestions] = useState<readonly PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  const [isLive, setIsLive] = useState(false);
+  // Once the visitor types or picks another place, live location must not overwrite it.
+  const choseOtherRef = useRef(false);
   const sessionTokenRef = useRef<string>(generateSessionToken());
 
   const { locate, geoLoading } = useBrowserLocation({
-    initialLocation,
+    initialLocation: initialLocation ?? liveLocation,
     onLocationResolved: (loc) => {
+      if (choseOtherRef.current) return;
       setSelectedLocation(loc);
       setQuery(loc.label);
       setSuggestions([]);
+      setIsLive(true);
     },
     onError: (msg) => setError(msg),
   });
+
+  // Live location is the default; it fills in once known unless another place was chosen.
+  useEffect(() => {
+    if (!liveLocation || initialLocation || choseOtherRef.current) return;
+    setSelectedLocation(liveLocation);
+    setQuery(liveLocation.label);
+    setIsLive(true);
+  }, [liveLocation, initialLocation]);
 
   useEffect(() => {
     if (!query.trim() || (selectedLocation && query === selectedLocation.label)) {
@@ -80,6 +95,8 @@ export function WhereStep({ initialLocation, onLocationConfirmed }: WhereStepPro
     try {
       const loc = await fetchPlaceLocation(suggestion.placeId, sessionTokenRef.current);
       sessionTokenRef.current = generateSessionToken();
+      choseOtherRef.current = true;
+      setIsLive(false);
       setSelectedLocation(loc);
       setQuery(loc.label);
       setSuggestions([]);
@@ -92,10 +109,13 @@ export function WhereStep({ initialLocation, onLocationConfirmed }: WhereStepPro
 
   const handleUseMyLocation = () => {
     setError(undefined);
+    choseOtherRef.current = false;
     locate(false);
   };
 
   const handleSampleHousehold = () => {
+    choseOtherRef.current = true;
+    setIsLive(false);
     setSelectedLocation(DELHI_DEMO_LOCATION);
     setQuery(DELHI_DEMO_LOCATION.label);
     onLocationConfirmed(DELHI_DEMO_LOCATION, true);
@@ -103,12 +123,13 @@ export function WhereStep({ initialLocation, onLocationConfirmed }: WhereStepPro
 
   return (
     <section className={styles.stepContainer} aria-labelledby="step-where-heading">
+      <p className={styles.kicker}>Entry 01 · Area</p>
       <h2 id="step-where-heading" className={styles.heading} tabIndex={-1}>
         Where are you?
       </h2>
       <p className={styles.description}>
-        Saans reads the hourly PM2.5 forecast for your neighbourhood, so the plan
-        matches the air your family will actually breathe today.
+        Saans starts from your live location. Search to plan for any other
+        area, such as a relative's home or your workplace.
       </p>
 
       <div className={styles.searchSection}>
@@ -119,6 +140,8 @@ export function WhereStep({ initialLocation, onLocationConfirmed }: WhereStepPro
           onChange={(val) => {
             setQuery(val);
             if (selectedLocation && val !== selectedLocation.label) {
+              choseOtherRef.current = true;
+              setIsLive(false);
               setSelectedLocation(undefined);
             }
           }}
@@ -154,7 +177,7 @@ export function WhereStep({ initialLocation, onLocationConfirmed }: WhereStepPro
         <div className={styles.selectedBadge} role="status">
           <span className={styles.selectedIcon} aria-hidden="true"><IconCheck size={14} /></span>
           <span>
-            <span className={styles.selectedHint}>Planning for</span>
+            <span className={styles.selectedHint}>{isLive ? "Planning for · your live location" : "Planning for"}</span>
             <span className={styles.selectedLabel}>{selectedLocation.label}</span>
           </span>
         </div>

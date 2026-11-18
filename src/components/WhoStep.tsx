@@ -108,6 +108,7 @@ export function WhoStep({
 
   return (
     <section className={styles.container} aria-labelledby="step-who-heading">
+      <p className={styles.kicker}>Entry 02 · Household</p>
       <h2 id="step-who-heading" className={styles.heading} tabIndex={-1}>
         Who lives here?
       </h2>

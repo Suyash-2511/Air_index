@@ -104,7 +104,7 @@ export function AirScene({
     <div
       ref={containerRef}
       className={className}
-      style={{ width: "100%", height: "100%", position: "relative" }}
+      style={{ width: "100%", height: "100%", position: "relative", animation: "scene-in 900ms var(--ease-out) both" }}
       aria-hidden="true"
     >
       <Canvas

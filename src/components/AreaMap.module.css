@@ -22,9 +22,9 @@
   position: relative;
   width: 100%;
   aspect-ratio: 640 / 360;
-  border-radius: var(--radius-panel);
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-strong);
   background-color: var(--sky-1);
 }
 

@@ -53,3 +53,14 @@ export function formatTimeOfDay(minutes: number): string {
   const clock = formatClock(h);
   return m === 0 ? clock : clock.replace(" ", `:${m.toString().padStart(2, "0")} `);
 }
+
+/**
+ * Sentence-cases a model-written title ("Add Bedroom Purifier" → "Add bedroom
+ * purifier") while keeping acronyms such as N95, HEPA and PM2.5 intact.
+ */
+export function toSentenceCase(title: string): string {
+  return title
+    .split(" ")
+    .map((word, i) => (i > 0 && /^[A-Z][a-z]+$/.test(word) ? word.toLowerCase() : word))
+    .join(" ");
+}
