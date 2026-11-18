@@ -12,20 +12,27 @@
 
 .input {
   width: 100%;
-  min-height: 48px;
-  padding: var(--space-8) var(--space-16);
-  font-size: 1rem;
+  min-height: 56px;
+  padding: var(--space-8) var(--space-48) var(--space-8) 48px;
+  font-size: 1.0625rem;
   line-height: 1.5;
   color: var(--ink);
-  background-color: var(--haze-1);
-  border: 1px solid var(--haze-2);
+  background-color: var(--surface);
+  border: 1px solid var(--rule);
   border-radius: var(--radius-btn);
-  transition: border-color var(--duration-short) var(--ease-out);
+  box-shadow: 0 1px 0 var(--glass-edge) inset;
+  transition: border-color var(--duration-short) var(--ease-out), box-shadow var(--duration-short) var(--ease-out);
 }
 
-.input:focus {
-  outline: 2px solid var(--amber);
-  outline-offset: 1px;
+.input::placeholder { color: var(--ink-2); opacity: 0.75; }
+.input:hover { border-color: var(--ink-2); }
+.input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 4px var(--halo); }
+
+.searchIcon {
+  position: absolute;
+  left: var(--space-16);
+  color: var(--ink-2);
+  pointer-events: none;
 }
 
 .input[aria-invalid="true"] {
@@ -52,35 +59,48 @@
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  max-height: 260px;
+  max-height: 300px;
   overflow-y: auto;
-  background-color: var(--haze-1);
-  border: 1px solid var(--haze-2);
+  background-color: var(--surface);
+  border: 1px solid var(--rule);
   border-radius: var(--radius-btn);
   z-index: 100;
   list-style: none;
-  padding: 0;
+  padding: var(--space-6);
   margin: 0;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--glass-shadow);
+  animation: drop 220ms var(--ease-out) both;
+  transform-origin: top;
+}
+
+@keyframes drop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.99); }
+  to { opacity: 1; transform: none; }
 }
 
 .option {
-  min-height: 44px;
-  padding: var(--space-8) var(--space-16);
+  min-height: 52px;
+  padding: var(--space-8) var(--space-12);
   cursor: pointer;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  border-bottom: 1px solid var(--haze-2);
+  align-items: center;
+  gap: var(--space-12);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-short) var(--ease-out);
 }
 
-.option:last-child {
-  border-bottom: none;
-}
+.optionText { display: flex; flex-direction: column; min-width: 0; }
+.pin { flex: none; color: var(--ink-2); }
 
 .optionSelected,
 .option:hover {
-  background-color: var(--haze-2);
+  background-color: var(--field);
+}
+
+.optionSelected .pin { color: var(--smog-deep); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown { animation: none; }
 }
 
 .mainText {

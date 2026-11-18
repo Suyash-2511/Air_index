@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PlanApiResponse } from "@/client/types";
 import { combineInterventions } from "@/lib/interventions/combine";
+import { buildRoutine } from "@/lib/routine/build-routine";
 import type { DayForecast, DoseBreakdown, Household } from "@/lib/types";
 import { AreaMap } from "./AreaMap";
 import { AskPanel } from "./AskPanel";
 import { ChangeCard } from "./ChangeCard";
 import { DayStrip } from "./DayStrip";
 import { PlanActions } from "./PlanActions";
+import { RoutineTimeline } from "./RoutineTimeline";
 import styles from "./PlanStep.module.css";
 
 /** Props for Step 3: Your plan. */
@@ -47,8 +49,8 @@ function useCountUp(target: number, durationMs = 900): number {
 /**
  * Step 3: Your plan.
  * Displays the asymmetric layout with count-up headline reveal,
- * ranked glass change cards with instant zero-fetch recomputation,
- * and 24h day strip in sync with the 3D smog sphere.
+ * time-ordered routine timeline, ranked glass change cards with instant
+ * zero-fetch recomputation, and 24h day strip in sync with the 3D smog sphere.
  */
 export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStepProps) {
   const [activeIds, setActiveIds] = useState<string[]>([]);
@@ -77,6 +79,10 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
   const currentTotal = Math.round(currentDoses.reduce((sum, d) => sum + d.totalMicrograms, 0));
   const currentSavedUg = baselineTotal - currentTotal;
   const currentSavedPct = baselineTotal > 0 ? Math.round((currentSavedUg / baselineTotal) * 100) : 0;
+
+  const routineItems = useMemo(() => {
+    return buildRoutine(household, planData.air.forecast, planData.ranked);
+  }, [household, planData.air.forecast, planData.ranked]);
 
   useEffect(() => {
     onDoseChange?.(currentTotal, baselineTotal);
@@ -118,6 +124,15 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
           planData={planData}
           household={household}
           currentTotal={currentTotal}
+          routine={routineItems}
+        />
+
+        <RoutineTimeline
+          items={routineItems}
+          areaLabel={household.location.label}
+          household={household}
+          activeIds={activeIds}
+          onToggleIntervention={handleToggle}
         />
 
         <section className={styles.cardsSection} aria-labelledby="ranked-changes-title">
@@ -129,9 +144,10 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
               No effective changes identified for this routine. Your routine already minimizes outdoor exposure.
             </p>
           ) : (
-            planData.ranked.map((action) => (
+            planData.ranked.map((action, i) => (
               <ChangeCard
                 key={action.id}
+                rank={i + 1}
                 action={action}
                 isActive={activeIds.includes(action.id)}
                 onToggle={handleToggle}

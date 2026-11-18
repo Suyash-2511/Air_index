@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PlanApiResponse } from "@/client/types";
 import { type BriefInput, buildCommunityBrief, buildReadAloudScript } from "@/lib/brief";
+import type { RoutineItem } from "@/lib/routine/build-routine";
 import type { Household } from "@/lib/types";
 import { IconCopy, IconPrint, IconShare, IconSpeaker, IconStop } from "./icons";
 import styles from "./PlanActions.module.css";
@@ -12,6 +13,7 @@ export interface PlanActionsProps {
   planData: PlanApiResponse;
   household: Household;
   currentTotal: number;
+  routine?: readonly RoutineItem[];
 }
 
 const INTERVENTION_TITLES: Record<string, string> = {
@@ -37,7 +39,7 @@ function getInterventionTitle(id: string): string {
  * Row of quiet secondary action buttons to read aloud, copy a community brief,
  * share, or print the current exposure reduction plan.
  */
-export function PlanActions({ planData, household, currentTotal }: PlanActionsProps) {
+export function PlanActions({ planData, household, currentTotal, routine }: PlanActionsProps) {
   const [canSpeak, setCanSpeak] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [canShare, setCanShare] = useState(false);
@@ -54,8 +56,9 @@ export function PlanActions({ planData, household, currentTotal }: PlanActionsPr
         savedPercent: action.savedPercent,
         reducesOwnEmissions: action.reducesOwnEmissions,
       })),
+      routine,
     };
-  }, [household.location.label, planData, currentTotal]);
+  }, [household.location.label, planData, currentTotal, routine]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {

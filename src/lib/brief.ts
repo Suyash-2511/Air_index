@@ -1,3 +1,5 @@
+import type { RoutineItem } from "./routine/build-routine";
+
 /** The parts of a plan the brief needs, kept independent of UI types. */
 export interface BriefInput {
   areaLabel: string;
@@ -5,6 +7,7 @@ export interface BriefInput {
   forecast: readonly { hour: number; pm25: number }[];
   householdMicrograms: number;
   changes: readonly { title: string; savedPercent: number; reducesOwnEmissions: boolean }[];
+  routine?: readonly RoutineItem[] | undefined;
 }
 
 /** India's 24-hour PM2.5 standard (NAAQS 2009), in µg/m³. */
@@ -50,6 +53,14 @@ export function buildCommunityBrief(input: BriefInput): string {
     );
   }
 
+  if (input.routine && input.routine.length > 0) {
+    const topRoutine = input.routine.slice(0, 3);
+    lines.push("", "Today's routine:");
+    topRoutine.forEach((item) => {
+      lines.push(`• ${formatHour(item.startHour)}: ${item.title} (${item.detail})`);
+    });
+  }
+
   const top = input.changes.slice(0, 3);
   if (top.length > 0) {
     lines.push("", "What helped most in one household's plan:");
@@ -76,6 +87,12 @@ export function buildReadAloudScript(input: BriefInput): string {
     parts.push(
       `Outdoor air is worst around ${formatHour(extremes.worst.hour)} and cleanest around ${formatHour(extremes.best.hour)}.`,
     );
+  }
+  if (input.routine && input.routine.length > 0) {
+    input.routine.slice(0, 3).forEach((item) => {
+      const titleLower = item.title.charAt(0).toLowerCase() + item.title.slice(1);
+      parts.push(`At ${formatHour(item.startHour)}, ${titleLower}.`);
+    });
   }
   input.changes.slice(0, 3).forEach((change, i) => {
     parts.push(`Change ${i + 1}: ${change.title}. It cuts your dose by ${Math.round(change.savedPercent)} percent.`);

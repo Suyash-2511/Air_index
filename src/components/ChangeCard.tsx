@@ -9,11 +9,13 @@ export interface ChangeCardProps {
   action: RankedAction;
   isActive: boolean;
   onToggle: (id: string, active: boolean) => void;
+  /** 1-based position in the ranking, shown as a large numeral. */
+  rank?: number;
 }
 
 function formatEffort(effort: RankedAction["effort"]): string {
   if (effort === "free") return "Free";
-  if (effort === "low_cost") return "Low Cost";
+  if (effort === "low_cost") return "Low cost";
   return "Investment";
 }
 
@@ -22,7 +24,7 @@ function formatEffort(effort: RankedAction["effort"]): string {
  * and grounded plain-language explanations. Toggling this switch recomputes household
  * exposure in real time with zero network requests.
  */
-export function ChangeCard({ action, isActive, onToggle }: ChangeCardProps) {
+export function ChangeCard({ action, isActive, onToggle, rank }: ChangeCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const switchId = useId();
   const detailsId = useId();
@@ -34,12 +36,15 @@ export function ChangeCard({ action, isActive, onToggle }: ChangeCardProps) {
   return (
     <article className={`${styles.card} ${isActive ? styles.cardActive : ""}`}>
       <div className={styles.topRow}>
+        {rank !== undefined && (
+          <span className={styles.rank} aria-hidden="true">{String(rank).padStart(2, "0")}</span>
+        )}
         <div className={styles.titleArea}>
           <h4 className={styles.title}>{title}</h4>
           <div className={styles.badges}>
-            <span className={styles.effortBadge}>{formatEffort(action.effort)}</span>
+            <span className={styles.effortBadge} data-effort={action.effort}>{formatEffort(action.effort)}</span>
             <span className={`${styles.savingsText} tabular-nums`}>
-              Cuts {savedUg} µg ({savedPct}%)
+              −{savedPct}% · {savedUg.toLocaleString("en-IN")} µg less
             </span>
           </div>
         </div>
@@ -55,6 +60,10 @@ export function ChangeCard({ action, isActive, onToggle }: ChangeCardProps) {
         >
           <span className={styles.switchHandle} aria-hidden="true" />
         </button>
+      </div>
+
+      <div className={styles.meter} aria-hidden="true">
+        <span style={{ transform: `scaleX(${Math.min(1, Math.max(0, savedPct / 100))})` }} />
       </div>
 
       {action.explanation && (

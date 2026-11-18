@@ -8,108 +8,123 @@
   background-color: var(--glass);
   backdrop-filter: blur(18px) saturate(120%);
   -webkit-backdrop-filter: blur(18px) saturate(120%);
-  border: 1px solid var(--haze-2);
+  border: 1px solid var(--rule);
   border-radius: var(--radius-panel);
-  box-shadow: inset 0 1px 0 0 var(--glass-edge);
+  box-shadow: inset 0 1px 0 0 var(--glass-edge), var(--glass-shadow);
+  animation: rise 700ms var(--ease-out) both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .heading {
+  margin: 0;
   font-family: var(--font-display), "Times New Roman", Georgia, serif;
-  font-size: 2.25rem;
-  letter-spacing: -0.02em;
-  color: var(--ink);
+  font-size: clamp(2rem, 4vw, 2.75rem);
   font-weight: 400;
-  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ink);
 }
 
-.description {
-  font-size: 1rem;
-  color: var(--ink-2);
-  line-height: 1.5;
-  margin: 0;
-}
+.description { margin: 0; max-width: 44ch; font-size: 1rem; line-height: 1.6; color: var(--ink-2); }
 
-.searchSection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
+.searchSection { display: flex; flex-direction: column; gap: var(--space-8); }
 
 .label {
-  font-size: 0.75rem;
   font-family: var(--font-mono), monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 0.6875rem;
   font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--ink-2);
 }
 
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-12);
-  margin-top: var(--space-8);
-}
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-20); }
 
 .buttonSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
   min-height: 44px;
-  padding: var(--space-8) var(--space-16);
+  padding: 0 var(--space-16);
   font-size: 0.9375rem;
   font-weight: 500;
   color: var(--ink);
-  background-color: var(--haze-1);
-  border: 1px solid var(--haze-2);
-  border-radius: var(--radius-btn);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
   cursor: pointer;
-  transition: background-color var(--duration-short) var(--ease-out), border-color var(--duration-short) var(--ease-out);
+  transition: border-color var(--duration-short) var(--ease-out), background-color var(--duration-short) var(--ease-out);
 }
+.buttonSecondary:hover:not(:disabled) { border-color: var(--ink); }
+.buttonSecondary:active:not(:disabled) { transform: scale(0.98); }
+.buttonSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.buttonSecondary:hover:not(:disabled) {
-  background-color: var(--haze-2);
-  border-color: rgba(255, 246, 232, 0.2);
+.buttonLink {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.9375rem;
+  color: var(--ink-2);
+  cursor: pointer;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 100% 1px;
+  background-position: 0 calc(100% - 10px);
+  background-repeat: no-repeat;
+  transition: color var(--duration-short) var(--ease-out), background-size var(--duration-normal) var(--ease-out);
 }
+.buttonLink:hover { color: var(--smog-deep); background-size: 0% 1px; background-position: 100% calc(100% - 10px); }
 
-.buttonSecondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.selectedBadge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  background: var(--teal-soft);
+  border: 1px solid var(--clean);
+  border-radius: var(--radius-btn);
+  color: var(--ink);
+  animation: rise 400ms var(--ease-out) both;
 }
+.selectedIcon {
+  display: inline-grid; place-items: center; flex: none;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--clean); color: var(--sky-0);
+}
+.selectedHint { display: block; font-size: 0.75rem; color: var(--ink-2); }
+.selectedLabel { display: block; font-weight: 600; }
 
 .buttonPrimary {
-  min-height: 48px;
-  padding: var(--space-8) var(--space-24);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-12);
+  align-self: flex-start;
+  min-height: 52px;
+  padding: 0 var(--space-24);
   font-size: 1rem;
   font-weight: 600;
   color: var(--sky-0);
   background-color: var(--ink);
   border: 1px solid var(--ink);
-  border-radius: var(--radius-btn);
+  border-radius: 999px;
   cursor: pointer;
-  align-self: flex-start;
-  transition: background-color var(--duration-short) var(--ease-out);
+  transition: background-color var(--duration-short) var(--ease-out), transform var(--duration-short) var(--ease-out);
+}
+.buttonPrimary svg { transition: transform var(--duration-short) var(--ease-out); }
+.buttonPrimary:hover:not(:disabled) { background-color: var(--smog-deep); border-color: var(--smog-deep); }
+.buttonPrimary:hover:not(:disabled) svg { transform: translateX(3px); }
+.buttonPrimary:active:not(:disabled) { transform: scale(0.98); }
+.buttonPrimary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (max-width: 600px) {
+  .stepContainer { padding: var(--space-24); }
+  .buttonPrimary { align-self: stretch; justify-content: center; }
 }
 
-.buttonPrimary:hover:not(:disabled) {
-  background-color: var(--smog-deep);
-}
-
-.buttonPrimary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.selectedBadge {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-8) var(--space-12);
-  background-color: var(--haze-1);
-  border: 1px solid var(--haze-2);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  color: var(--ink);
-}
-
-.selectedLabel {
-  font-weight: 600;
-  color: var(--amber-deep);
+@media (prefers-reduced-motion: reduce) {
+  .stepContainer, .selectedBadge { animation: none; }
 }

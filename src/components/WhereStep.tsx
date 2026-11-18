@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  fetchPlaceLocation,
-  fetchPlaceSuggestions,
-  fetchReverseGeocode,
-} from "@/client/api";
+import { fetchPlaceLocation, fetchPlaceSuggestions } from "@/client/api";
 import type { PlaceSuggestion } from "@/client/types";
 import type { Location } from "@/lib/types";
 import { Combobox } from "./Combobox";
+import { IconArrowRight, IconCheck, IconLocation } from "./icons";
+import { useBrowserLocation } from "./useBrowserLocation";
 import styles from "./WhereStep.module.css";
 
 /** Default New Delhi demo coordinates. */
@@ -36,17 +34,23 @@ function generateSessionToken(): string {
  * Captures the user's location via Places autocomplete, browser geolocation,
  * or the one-click New Delhi sample demo.
  */
-export function WhereStep({
-  initialLocation,
-  onLocationConfirmed,
-}: WhereStepProps) {
+export function WhereStep({ initialLocation, onLocationConfirmed }: WhereStepProps) {
   const [query, setQuery] = useState(initialLocation?.label ?? "");
   const [selectedLocation, setSelectedLocation] = useState<Location | undefined>(initialLocation);
   const [suggestions, setSuggestions] = useState<readonly PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
-  const [geoLoading, setGeoLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const sessionTokenRef = useRef<string>(generateSessionToken());
+
+  const { locate, geoLoading } = useBrowserLocation({
+    initialLocation,
+    onLocationResolved: (loc) => {
+      setSelectedLocation(loc);
+      setQuery(loc.label);
+      setSuggestions([]);
+    },
+    onError: (msg) => setError(msg),
+  });
 
   useEffect(() => {
     if (!query.trim() || (selectedLocation && query === selectedLocation.label)) {
@@ -87,31 +91,8 @@ export function WhereStep({
   };
 
   const handleUseMyLocation = () => {
-    if (!navigator.geolocation) {
-      setError("Geolocation is not supported by your browser");
-      return;
-    }
-    setGeoLoading(true);
     setError(undefined);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const loc = await fetchReverseGeocode(pos.coords.latitude, pos.coords.longitude);
-          setSelectedLocation(loc);
-          setQuery(loc.label);
-          setSuggestions([]);
-        } catch (err: unknown) {
-          setError(err instanceof Error ? err.message : "Could not identify your address");
-        } finally {
-          setGeoLoading(false);
-        }
-      },
-      (err) => {
-        setGeoLoading(false);
-        setError(`Location access denied: ${err.message}`);
-      },
-      { timeout: 10000, enableHighAccuracy: true },
-    );
+    locate(false);
   };
 
   const handleSampleHousehold = () => {
@@ -126,12 +107,12 @@ export function WhereStep({
         Where are you?
       </h2>
       <p className={styles.description}>
-        Saans pulls hourly air-quality readings and forecasts across India to calculate
-        your family's exact exposure throughout the day.
+        Saans reads the hourly PM2.5 forecast for your neighbourhood, so the plan
+        matches the air your family will actually breathe today.
       </p>
 
       <div className={styles.searchSection}>
-        <span className={styles.label}>City, Neighborhood or PIN</span>
+        <span className={styles.label} aria-hidden="true">City, neighbourhood or PIN code</span>
         <Combobox
           label="Search location in India"
           value={query}
@@ -144,7 +125,7 @@ export function WhereStep({
           onSelect={handleSelectSuggestion}
           suggestions={suggestions}
           loading={loading}
-          placeholder="e.g. Lajpat Nagar, Delhi or Indiranagar, Bengaluru"
+          placeholder="Try College Road, Nashik or Indiranagar, Bengaluru"
           error={error}
         />
       </div>
@@ -156,13 +137,14 @@ export function WhereStep({
           disabled={geoLoading || loading}
           className={styles.buttonSecondary}
         >
-          {geoLoading ? "Locating..." : "Use my location"}
+          <IconLocation size={16} />
+          {geoLoading ? "Finding you…" : "Use my location"}
         </button>
 
         <button
           type="button"
           onClick={handleSampleHousehold}
-          className={styles.buttonSecondary}
+          className={styles.buttonLink}
         >
           Try a sample household (Delhi)
         </button>
@@ -170,8 +152,11 @@ export function WhereStep({
 
       {selectedLocation && (
         <div className={styles.selectedBadge} role="status">
-          <span className={styles.label}>Selected:</span>
-          <span className={styles.selectedLabel}>{selectedLocation.label}</span>
+          <span className={styles.selectedIcon} aria-hidden="true"><IconCheck size={14} /></span>
+          <span>
+            <span className={styles.selectedHint}>Planning for</span>
+            <span className={styles.selectedLabel}>{selectedLocation.label}</span>
+          </span>
         </div>
       )}
 
@@ -183,7 +168,8 @@ export function WhereStep({
         }}
         className={styles.buttonPrimary}
       >
-        Continue to Household
+        Continue to household
+        <IconArrowRight size={16} />
       </button>
     </section>
   );

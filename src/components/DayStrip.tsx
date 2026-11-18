@@ -61,10 +61,10 @@ export function DayStrip({
             <div className={styles.memberHeader}>
               <span className={styles.memberName}>{member.label}</span>
               <span className={`${styles.memberTotal} tabular-nums`}>
-                {currentTotal} µg today
+                {currentTotal.toLocaleString("en-IN")} µg today
                 {hasChangesActive && baseTotal > currentTotal && (
-                  <span style={{ color: "var(--teal)", marginLeft: "8px" }}>
-                    (-{baseTotal - currentTotal} µg saved)
+                  <span className={styles.memberSaved}>
+                    −{(baseTotal - currentTotal).toLocaleString("en-IN")} µg
                   </span>
                 )}
               </span>
@@ -90,7 +90,8 @@ export function DayStrip({
                       )}
                       <div
                         className={styles.barActive}
-                        style={{ height: `${heightPct}%` }}
+                        data-peak={h === peakHour && peakValue > 0}
+                        style={{ height: `${heightPct}%`, ["--v" as string]: `${Math.round(heightPct)}%` }}
                       />
                     </div>
                   </div>

@@ -45,28 +45,20 @@ describe("brief", () => {
   });
 
   it("shows 'x times India\\'s daily limit' only when peak is >= 2x the 60 µg/m³ limit (>= 90 µg/m³ rounds to 2x)", () => {
-    // 70 µg/m³ -> 70 / 60 = 1.16 -> round = 1 (< 2) -> no limit mention
     const lowInput: BriefInput = {
       areaLabel: "South Delhi",
       date: dummyDate,
-      forecast: [
-        { hour: 8, pm25: 70 },
-        { hour: 15, pm25: 50 },
-      ],
+      forecast: [{ hour: 8, pm25: 70 }, { hour: 15, pm25: 50 }],
       householdMicrograms: 150,
       changes: [],
     };
     const lowBrief = buildCommunityBrief(lowInput);
     expect(lowBrief).not.toContain("India's daily limit");
 
-    // 180 µg/m³ -> 180 / 60 = 3 -> 3x
     const highInput: BriefInput = {
       areaLabel: "South Delhi",
       date: dummyDate,
-      forecast: [
-        { hour: 8, pm25: 180 },
-        { hour: 15, pm25: 50 },
-      ],
+      forecast: [{ hour: 8, pm25: 180 }, { hour: 15, pm25: 50 }],
       householdMicrograms: 150,
       changes: [],
     };
@@ -94,8 +86,36 @@ describe("brief", () => {
     expect(brief).toContain("3. Wear N95 mask during commute");
     expect(brief).not.toContain("4. Shift outdoor exercise");
 
-    // Check emission notes
     expect(brief).toContain("(also cuts smog we make)");
     expect(brief).toContain('If several homes do "switch to cleaner cooking fuel", the whole street breathes less.');
+  });
+
+  it("includes top 3 routine items in community brief and read-aloud script", () => {
+    const input: BriefInput = {
+      areaLabel: "Indirapuram",
+      date: dummyDate,
+      forecast: [{ hour: 14, pm25: 50 }],
+      householdMicrograms: 200,
+      changes: [],
+      routine: [
+        {
+          startHour: 14,
+          endHour: 16,
+          kind: "ventilate",
+          title: "Open windows for 15 minutes",
+          detail: "Cleanest daytime air today at 50 µg/m³.",
+          pm25: 50,
+          memberIds: [],
+          reducesOwnEmissions: false,
+        },
+      ],
+    };
+
+    const brief = buildCommunityBrief(input);
+    expect(brief).toContain("Today's routine:");
+    expect(brief).toContain("• 2 PM: Open windows for 15 minutes");
+
+    const script = buildReadAloudScript(input);
+    expect(script).toContain("At 2 PM, open windows for 15 minutes.");
   });
 });

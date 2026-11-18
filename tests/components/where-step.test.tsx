@@ -40,7 +40,7 @@ describe("WhereStep (Step 1)", () => {
 
   it("disables Continue button until a location is confirmed", () => {
     render(<WhereStep onLocationConfirmed={vi.fn()} />);
-    const continueBtn = screen.getByRole("button", { name: "Continue to Household" });
+    const continueBtn = screen.getByRole("button", { name: "Continue to household" });
     expect(continueBtn.hasAttribute("disabled")).toBe(true);
   });
 });

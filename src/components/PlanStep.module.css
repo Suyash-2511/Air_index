@@ -97,7 +97,7 @@
 .emptyCards {
   padding: var(--space-16);
   background-color: var(--glass);
-  border: 1px solid var(--haze-2);
+  border: 1px solid var(--rule);
   border-radius: var(--radius-panel);
   color: var(--ink-2);
   font-size: 0.9375rem;

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import type { PlaceSuggestion } from "@/client/types";
+import { IconPin, IconSearch } from "./icons";
 import styles from "./Combobox.module.css";
 
 /** Props for the accessible place autocomplete combobox. */
@@ -85,6 +86,7 @@ export function Combobox({
         {label}
       </label>
       <div className={styles.inputGroup}>
+        <IconSearch className={styles.searchIcon} />
         <input
           id={`${listboxId}-input`}
           ref={inputRef}
@@ -133,8 +135,11 @@ export function Combobox({
                 }}
                 onMouseEnter={() => setActiveIndex(idx)}
               >
-                <span className={styles.mainText}>{item.mainText}</span>
-                <span className={styles.secondaryText}>{item.secondaryText}</span>
+                <IconPin className={styles.pin} />
+                <span className={styles.optionText}>
+                  <span className={styles.mainText}>{item.mainText}</span>
+                  <span className={styles.secondaryText}>{item.secondaryText}</span>
+                </span>
               </li>
             );
           })}

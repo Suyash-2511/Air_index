@@ -49,13 +49,18 @@ Saans connects real-time atmospheric data with physical simulation and plain-lan
    - Performs reverse geocoding from browser GPS coordinates to city names (`/api/geocode`).
 4. **Google Maps Static API** (`src/lib/maps/static-map.ts`):
    - Delivers muted server-side basemaps behind the local PM2.5 raster heatmap (`/api/staticmap`).
-5. **Gemini via `@google/genai`** (`src/lib/gemini/`):
+5. **Google Calendar (event links)** (`src/lib/routine/calendar-link.ts`):
+   - Formats one-click event scheduling links (`action=TEMPLATE`) for daily protective routine actions directly into Google Calendar.
+6. **Gemini via `@google/genai`** (`src/lib/gemini/`):
    - Natural language family routine intake (`src/lib/gemini/intake.ts`).
    - Plain-language explanation generation for ranked changes (`src/lib/gemini/explain.ts`).
    - Grounded Q&A assistance (`src/lib/gemini/ask.ts`) using model client configuration (`src/lib/gemini/client.ts`).
-6. **Interactive 3D Earth & Local Heatmap**:
+7. **Interactive 3D Earth & Local Heatmap**:
    - Visualizes planetary day/night terminator with city lights, dynamically easing to the chosen Indian city with local smog dome density and ambient particle drift (`src/components/scene/`).
    - Provides a client-side instant recomputation engine (`src/lib/interventions/combine.ts`) allowing users to toggle changes with zero latency.
+
+**Today's routine** (`src/lib/routine/build-routine.ts`, `src/components/RoutineTimeline.tsx`):
+Saans synthesizes the 24-hour PM2.5 forecast with the household's actual daily windows to generate a chronologically ordered routine for the day. It deterministically flags the cleanest daytime block for safe ventilation or outdoor exercise, identifies severe smog peaks where homes must be sealed, and suggests protective mitigations during commutes, cooking, and sleep. Each event features actionable microgram savings, direct toggle synchronization with the intervention plan, and one-click Google Calendar integration.
 
 ## Assumptions
 
