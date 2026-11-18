@@ -14,6 +14,8 @@ const cspHeader = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Self-contained server bundle for a small Cloud Run image.
+  output: "standalone",
   poweredByHeader: false,
   async headers() {
     return [
