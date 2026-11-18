@@ -3,11 +3,13 @@ import { z } from "zod";
 import { intakeHousehold } from "@/lib/gemini/intake";
 import { toSafeError } from "@/lib/security/errors";
 import { apiRateLimiter } from "@/lib/security/rate-limit";
+import { locationSchema } from "@/lib/types";
 
 const MAX_BODY_BYTES = 2048;
 
 const intakeRequestSchema = z.object({
   text: z.string().min(2).max(2000),
+  location: locationSchema,
 });
 
 /**
@@ -60,12 +62,12 @@ export async function POST(request: Request): Promise<Response> {
     const parseResult = intakeRequestSchema.safeParse(jsonBody);
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Invalid intake request. Must provide text between 2 and 2000 characters." },
+        { error: "Invalid intake request. Must provide text (2-2000 characters) and valid location coordinates." },
         { status: 400 },
       );
     }
 
-    const result = await intakeHousehold(parseResult.data.text);
+    const result = await intakeHousehold(parseResult.data.text, parseResult.data.location);
     return NextResponse.json(result, { status: 200 });
   } catch (err: unknown) {
     const safeError = toSafeError(err);

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Plan, RankedIntervention } from "../interventions/rank";
 import type { Household } from "../types";
 import { generateStructured } from "./client";
-import { groundText } from "./grounding";
+import { getInterventionTitle, groundText, stripInternalIds } from "./grounding";
 
 /** Explanation details generated for a specific ranked intervention. */
 export const explainedInterventionSchema = z.object({
@@ -14,13 +14,19 @@ export const explainedInterventionSchema = z.object({
 });
 export type ExplainedIntervention = z.infer<typeof explainedInterventionSchema>;
 
-/** Response schema containing explanations for all ranked interventions in a plan. */
+const geminiExplanationSchema = z.object({
+  index: z.number().int().min(1),
+  title: z.string().min(1).max(80),
+  whyItHelps: z.string().min(1).max(300),
+  steps: z.array(z.string().min(1).max(200)).min(2).max(4),
+  sustainableAlternative: z.string().max(300).optional(),
+});
+
 export const explainPlanResponseSchema = z.object({
-  explanations: z.array(explainedInterventionSchema),
+  explanations: z.array(geminiExplanationSchema),
 });
 export type ExplainPlanResponse = z.infer<typeof explainPlanResponseSchema>;
 
-/** Constrained decoding schema for Gemini plan explanation operations. */
 export const explainResponseSchema: Record<string, unknown> = {
   type: "object",
   properties: {
@@ -29,36 +35,37 @@ export const explainResponseSchema: Record<string, unknown> = {
       items: {
         type: "object",
         properties: {
-          id: { type: "string" },
+          index: { type: "integer" },
           title: { type: "string" },
           whyItHelps: { type: "string" },
           steps: { type: "array", items: { type: "string" } },
           sustainableAlternative: { type: "string" },
         },
-        required: ["id", "title", "whyItHelps", "steps"],
+        required: ["index", "title", "whyItHelps", "steps"],
       },
     },
   },
   required: ["explanations"],
 };
 
-/** Version tag for prompt template to invalidate plan cache when prompt structure evolves. */
-export const EXPLAIN_PROMPT_VERSION = "v1";
+export const EXPLAIN_PROMPT_VERSION = "v2";
 
-/**
- * Builds deterministic explanations for demo mode, perfectly grounded in plan numbers.
- */
-export function getDemoExplainFixture(plan: Plan): ExplainPlanResponse {
-  const explanations: ExplainedIntervention[] = plan.ranked.map((item: RankedIntervention) => {
+/** Builds deterministic explanations for demo mode, perfectly grounded in plan numbers. */
+export function getDemoExplainFixture(plan: Plan, household: Household): ExplainPlanResponse {
+  const memberMap = new Map(household.members.map((m) => [m.id, m.label]));
+
+  const explanations = plan.ranked.map((item: RankedIntervention, idx: number) => {
     const savedUg = Math.round(item.savedMicrograms);
     const savedPct = Math.round(item.savedPercent);
+    const primaryBen = item.beneficiaries[0];
+    const benLabel = primaryBen ? memberMap.get(primaryBen.memberId) ?? "household members" : "household members";
 
     return {
-      id: item.id,
-      title: item.id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-      whyItHelps: `Reduces household daily inhaled PM2.5 by ${savedUg} µg (${savedPct}% overall reduction).`,
+      index: idx + 1,
+      title: getInterventionTitle(item.id),
+      whyItHelps: `Reduces inhaled PM2.5 by ${savedUg} µg (${savedPct}%) protecting ${benLabel}.`,
       steps: [
-        "Review high-exposure hours and ensure family members coordinate timing.",
+        "Coordinate high-exposure hours and ensure family members adjust routines.",
         "Keep doors and windows sealed when outdoor pollution levels peak.",
       ],
       sustainableAlternative: item.reducesOwnEmissions
@@ -71,68 +78,72 @@ export function getDemoExplainFixture(plan: Plan): ExplainPlanResponse {
 }
 
 const EXPLAIN_SYSTEM_PROMPT = `You are Saans Exposure Engine Plan Explainer.
-Given an ALREADY-COMPUTED intervention ranking plan, produce practical household explanations.
-Requirements:
-1. For each ranked intervention, output:
-   - title: short plain-language title (2-6 words)
-   - whyItHelps: one sentence explaining why this helps this household
-   - steps: 2 or 3 practical actionable steps
-   - sustainableAlternative: if reducesOwnEmissions is true, note on sustainable alternative
-2. STRICT NUMBER GROUNDING:
-   - Do NOT invent, change, or re-calculate any numbers.
-   - Use ONLY numbers provided in the input plan. Any sentence with an invented number is automatically purged.`;
+Given an ALREADY-COMPUTED plan, generate plain-language explanations using human titles and member labels.
+Rules:
+1. Refer to people by their human labels (e.g. "Mother", "You"). NEVER use internal IDs like "member-1" or snake_case IDs.
+2. STRICT NUMBER GROUNDING: Do NOT invent, recalculate, or alter any numbers.`;
 
-/**
- * Generates plain-language, grounded explanations for all interventions in a computed Plan.
- * Executes exactly ONE Gemini call for the entire plan and grounds all resulting text.
- */
+/** Generates plain-language, grounded explanations without exposing internal database or model IDs. */
 export async function explainPlan(plan: Plan, household: Household): Promise<Record<string, ExplainedIntervention>> {
   if (plan.ranked.length === 0) return {};
 
+  const memberIdToLabel = new Map(household.members.map((m) => [m.id, m.label]));
+  const interventionIdToTitle = new Map(plan.ranked.map((r) => [r.id, getInterventionTitle(r.id)]));
+
   const inputSummary = {
     household: {
-      membersCount: household.members.length,
+      members: household.members.map((m) => ({ label: m.label, conditions: m.sensitivities })),
       cookingFuel: household.home.cookingFuel,
       windowHabit: household.home.windowHabit,
-      sensitivities: household.members.flatMap((m) => m.sensitivities),
     },
     baselineTotalUg: Math.round(plan.baselineTotal),
-    rankedInterventions: plan.ranked.map((item) => ({
-      id: item.id,
-      kind: item.kind,
+    rankedActions: plan.ranked.map((item, idx) => ({
+      index: idx + 1,
+      title: getInterventionTitle(item.id),
       effort: item.effort,
-      reducesOwnEmissions: item.reducesOwnEmissions,
       savedMicrograms: Math.round(item.savedMicrograms),
       savedPercent: Math.round(item.savedPercent),
       beneficiaries: item.beneficiaries.map((b) => ({
-        memberId: b.memberId,
+        person: memberIdToLabel.get(b.memberId) ?? "Family Member",
         savedUg: Math.round(b.savedMicrograms),
-        savedPercent: Math.round(b.savedPercent),
       })),
     })),
   };
 
   const response = await generateStructured<ExplainPlanResponse>({
     system: EXPLAIN_SYSTEM_PROMPT,
-    contents: `Explain these computed plan interventions:\n${JSON.stringify(inputSummary, null, 2)}`,
+    contents: `Explain these computed plan actions:\n${JSON.stringify(inputSummary, null, 2)}`,
     responseSchema: explainResponseSchema,
     zodSchema: explainPlanResponseSchema,
-    demoFixture: () => getDemoExplainFixture(plan),
+    demoFixture: () => getDemoExplainFixture(plan, household),
   });
 
   const resultMap: Record<string, ExplainedIntervention> = {};
 
-  for (const exp of response.explanations) {
-    const groundedWhy = groundText(exp.whyItHelps, plan);
-    const groundedSteps = exp.steps.map((st) => groundText(st, plan)).filter((st) => st.length > 0);
-    const groundedAlt = exp.sustainableAlternative ? groundText(exp.sustainableAlternative, plan) : undefined;
+  for (let i = 0; i < plan.ranked.length; i++) {
+    const item = plan.ranked[i];
+    if (!item) continue;
+    const exp = response.explanations.find((e) => e.index === i + 1) ?? response.explanations[i];
 
-    resultMap[exp.id] = {
-      id: exp.id,
-      title: exp.title,
-      whyItHelps: groundedWhy.length > 0 ? groundedWhy : exp.whyItHelps,
-      steps: groundedSteps.length > 0 ? groundedSteps : exp.steps,
-      sustainableAlternative: groundedAlt,
+    const rawWhy = exp?.whyItHelps ?? `Saves ${Math.round(item.savedMicrograms)} µg daily.`;
+    const cleanWhy = stripInternalIds(rawWhy, memberIdToLabel, interventionIdToTitle);
+    const groundedWhy = groundText(cleanWhy, plan);
+
+    const cleanSteps = (exp?.steps ?? ["Review daily schedule.", "Follow air quality advisories."]).map((st) => {
+      const stripped = stripInternalIds(st, memberIdToLabel, interventionIdToTitle);
+      return groundText(stripped, plan);
+    }).filter((s) => s.length > 0);
+
+    const cleanAlt = exp?.sustainableAlternative
+      ? groundText(stripInternalIds(exp.sustainableAlternative, memberIdToLabel, interventionIdToTitle), plan)
+      : undefined;
+
+    resultMap[item.id] = {
+      id: item.id,
+      title: exp?.title ?? getInterventionTitle(item.id),
+      whyItHelps: groundedWhy.length > 0 ? groundedWhy : cleanWhy,
+      steps: cleanSteps.length >= 2 ? cleanSteps : ["Adjust daily schedule accordingly.", "Follow local air quality advisories."],
+      sustainableAlternative: cleanAlt,
     };
   }
 

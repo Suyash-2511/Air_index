@@ -105,4 +105,35 @@ describe("POST /api/plan Route Security & Validation", () => {
     const res = await POST(blockedReq);
     expect(res.status).toBe(429);
   });
+
+  it("rejects an invalid household schedule with 400 naming the member and problem", async () => {
+    const invalidHousehold: Household = {
+      ...validHousehold,
+      members: [
+        {
+          id: "m-invalid",
+          label: "Aunt",
+          ageBand: "adult",
+          sensitivities: [],
+          windows: [
+            { activity: "sleep", setting: "indoor", startHour: 0, durationMinutes: 1000, room: "living", mask: false },
+            { activity: "rest_indoor", setting: "indoor", startHour: 8, durationMinutes: 1000, room: "living", mask: false },
+          ],
+        },
+      ],
+    };
+
+    const req = new Request("http://localhost/api/plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-forwarded-for": "12.0.0.9" },
+      body: JSON.stringify({ household: invalidHousehold }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+
+    const body = await res.json();
+    expect(body.error).toContain("Aunt");
+    expect(body.error).toContain("exceeding the 1440-minute");
+  });
 });

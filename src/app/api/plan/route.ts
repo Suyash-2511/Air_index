@@ -4,6 +4,7 @@ import { getAirProvider } from "@/lib/air";
 import { buildTodayForecast, getLocationCurrentHour } from "@/lib/air/mapper";
 import { hashPlanKey, planCache } from "@/lib/cache";
 import { isDemoMode } from "@/lib/env";
+import { validateSchedule } from "@/lib/exposure/schedule";
 import { geminiMetrics } from "@/lib/gemini/client";
 import { explainPlan, EXPLAIN_PROMPT_VERSION } from "@/lib/gemini/explain";
 import { buildPlan } from "@/lib/interventions/rank";
@@ -75,6 +76,17 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const { household } = parseResult.data;
+
+    for (const member of household.members) {
+      const scheduleProblems = validateSchedule(member.windows);
+      if (scheduleProblems.length > 0) {
+        return NextResponse.json(
+          { error: `Invalid schedule for member "${member.label}": ${scheduleProblems.join("; ")}` },
+          { status: 400 },
+        );
+      }
+    }
+
     const localHour = getLocationCurrentHour("in");
     const dateStr = new Date().toISOString().slice(0, 10);
     const cacheKey = hashPlanKey(household, dateStr, localHour, EXPLAIN_PROMPT_VERSION);

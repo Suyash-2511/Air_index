@@ -49,11 +49,13 @@ describe("Plan Ask Advisor", () => {
     ],
   };
 
-  it("answers plan-relevant questions with cited interventions", async () => {
+  it("answers plan-relevant questions with answerable=true and cited intervention", async () => {
     const res = await askQuestion("Should my mother use a mask?", dummyPlan, dummyHousehold);
     expect(res.answerable).toBe(true);
     expect(res.citedInterventionIds).toContain("mask_outdoor");
-    expect(res.answer).toContain("mask");
+    expect(res.answer).toContain("Mother");
+    expect(res.answer).not.toContain("m-mother");
+    expect(res.answer).not.toContain("mask_outdoor");
   });
 
   it("returns answerable false and explains plainly for off-plan questions", async () => {
@@ -63,8 +65,16 @@ describe("Plan Ask Advisor", () => {
     expect(res.answer.toLowerCase()).toContain("cannot be answered");
   });
 
+  it("demo fixture marks member plan query as answerable=true even when indoors", () => {
+    const res = getDemoAskFixture("Should my mother use a mask?", dummyPlan, dummyHousehold);
+    expect(res.answerable).toBe(true);
+    expect(res.citedInterventionIds).toContain("mask_outdoor");
+    expect(res.answer).toContain("Mother");
+    expect(res.answer).not.toContain("m-mother");
+  });
+
   it("demo fixture handles off-plan queries properly", () => {
-    const res = getDemoAskFixture("Can you give me a recipe for chocolate cake?", dummyPlan);
+    const res = getDemoAskFixture("Can you give me a recipe for chocolate cake?", dummyPlan, dummyHousehold);
     expect(res.answerable).toBe(false);
     expect(res.citedInterventionIds).toHaveLength(0);
     expect(res.answer).toContain("cannot be answered");
