@@ -109,6 +109,17 @@ export function getLocalHour(isoTimestamp: string | undefined, regionCode?: stri
   return { hour: date.getUTCHours(), timeZone: "UTC", isFallback: true };
 }
 
+/**
+ * Resolves the current local clock hour for a region code (defaults to "in" / Asia/Kolkata).
+ * Used to key cache lookups by the location's actual local hour rather than server time.
+ */
+export function getLocationCurrentHour(regionCode = "in", date: Date = new Date()): number {
+  const cleanRegion = regionCode.trim().toLowerCase();
+  const timeZone = REGION_TIMEZONES[cleanRegion] ?? "Asia/Kolkata";
+  const fmt = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", hour12: false });
+  return parseInt(fmt.format(date), 10) % 24;
+}
+
 interface ExtractedPollutants {
   pm25?: number;
   pm10?: number;

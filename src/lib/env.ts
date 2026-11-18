@@ -5,8 +5,11 @@ import { z } from "zod";
  * All keys are marked optional so Saans can run in offline demo mode without configuration.
  */
 export const envSchema = z.object({
-  GEMINI_API_KEY: z.string().min(1).optional(),
-  GOOGLE_MAPS_API_KEY: z.string().min(1).optional(),
+  GEMINI_API_KEY: z.string().optional(),
+  GOOGLE_MAPS_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().optional(),
+  GEMINI_FLASH_LITE_MODEL: z.string().optional(),
+  GEMINI_FLASH_MODEL: z.string().optional(),
 });
 
 /** Validated environment variable structure inferred from schema. */
@@ -29,8 +32,17 @@ export function getEnv(): Env {
  * Used by air quality providers to decide between real API calls and offline fixtures.
  */
 export function hasAirKey(): boolean {
-  const env = getEnv();
-  return typeof env.GOOGLE_MAPS_API_KEY === "string" && env.GOOGLE_MAPS_API_KEY.length > 0;
+  const key = getEnv().GOOGLE_MAPS_API_KEY?.trim();
+  return typeof key === "string" && key.length > 0;
+}
+
+/**
+ * Checks whether a valid Gemini API key is configured.
+ * Used by Gemini services to decide between live LLM calls and deterministic fixtures.
+ */
+export function hasGeminiKey(): boolean {
+  const key = getEnv().GEMINI_API_KEY?.trim();
+  return typeof key === "string" && key.length > 0;
 }
 
 /**
@@ -43,8 +55,18 @@ export function isDemoMode(): boolean {
 
 /**
  * Safely accesses the Google Maps API key without exposing it to client components.
- * Used exclusively by server-side air and pollen fetchers.
+ * Used exclusively by server-side air quality and places fetchers.
  */
 export function getGoogleMapsApiKey(): string | undefined {
-  return getEnv().GOOGLE_MAPS_API_KEY;
+  const key = getEnv().GOOGLE_MAPS_API_KEY?.trim();
+  return key && key.length > 0 ? key : undefined;
+}
+
+/**
+ * Safely accesses the Gemini API key without exposing it to client components.
+ * Used exclusively by server-side Gemini client operations.
+ */
+export function getGeminiApiKey(): string | undefined {
+  const key = getEnv().GEMINI_API_KEY?.trim();
+  return key && key.length > 0 ? key : undefined;
 }

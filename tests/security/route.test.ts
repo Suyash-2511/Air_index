@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/air/route";
+import * as airProviderModule from "@/lib/air";
 import { airCache } from "@/lib/cache";
 import { apiRateLimiter } from "@/lib/security/rate-limit";
 
@@ -95,5 +96,27 @@ describe("API Air Route Security & Validation", () => {
 
     const data = await limitedRes.json();
     expect(data.error).toContain("Too many requests");
+  });
+
+  it("never includes API keys or stack traces in HTTP error body when upstream fails", async () => {
+    const secretKey = "ai-secret-key-super-confidential";
+    vi.spyOn(airProviderModule, "getAirProvider").mockReturnValueOnce({
+      current: vi.fn().mockRejectedValue(new Error(`Failed upstream call for key ${secretKey}`)),
+      forecast: vi.fn().mockResolvedValue([]),
+    });
+
+    const req = new Request("http://localhost/api/air", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-forwarded-for": "10.0.0.99" },
+      body: JSON.stringify({ lat: 28.61, lng: 77.21 }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(500);
+
+    const body = await res.text();
+    expect(body).not.toContain(secretKey);
+    expect(body).not.toContain("Failed upstream call");
+    expect(body).not.toContain("stack");
   });
 });

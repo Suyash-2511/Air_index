@@ -34,6 +34,21 @@ export function hashGeocodeKey(lat: number, lng: number): string {
   return createHash("sha256").update(rawKey).digest("hex");
 }
 
+/**
+ * Hashes household definition, date string, local hour, and prompt version
+ * into a unique cache key for computed and explained plans.
+ */
+export function hashPlanKey(
+  household: unknown,
+  dateStr: string,
+  localHour: number,
+  promptVersion: string,
+): string {
+  const normalizedHour = ((localHour % 24) + 24) % 24;
+  const raw = `${JSON.stringify(household)}@${dateStr}#${normalizedHour}!${promptVersion}`;
+  return createHash("sha256").update(raw).digest("hex");
+}
+
 /** Generates cache key for heatmap tile coordinates. */
 export function tileKey(zoom: number, x: number, y: number): string {
   return `${zoom}/${x}/${y}`;
@@ -138,3 +153,6 @@ export const geocodeCache = new LruCache<unknown>(500, 7 * 24 * 60 * 60 * 1000);
 
 /** Global 30-minute heatmap tile cache (bounded to 1,000 tiles). */
 export const tileCache = new LruCache<Uint8Array>(1000, 30 * 60 * 1000);
+
+/** Global 1-hour computed and explained exposure plan cache. */
+export const planCache = new LruCache<unknown>(100, 60 * 60 * 1000);

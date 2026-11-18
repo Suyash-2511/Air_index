@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAirProvider } from "@/lib/air";
-import { buildTodayForecast } from "@/lib/air/mapper";
+import { buildTodayForecast, getLocationCurrentHour } from "@/lib/air/mapper";
 import { airCache, hashLocationHourKey } from "@/lib/cache";
 import { toSafeError } from "@/lib/security/errors";
 import { apiRateLimiter } from "@/lib/security/rate-limit";
@@ -71,8 +71,8 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const { lat, lng } = parseResult.data;
-    const currentHour = new Date().getHours();
-    const cacheKey = hashLocationHourKey(lat, lng, currentHour);
+    const localHour = getLocationCurrentHour("in");
+    const cacheKey = hashLocationHourKey(lat, lng, localHour);
 
     const cached = airCache.get(cacheKey);
     if (cached) {

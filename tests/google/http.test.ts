@@ -101,4 +101,28 @@ describe("Shared Google HTTP Helper", () => {
     expect(bytes).toBeInstanceOf(Uint8Array);
     expect(Array.from(bytes)).toEqual([1, 2, 3, 4]);
   });
+
+  it("never includes the API key in thrown errors even if returned by upstream", async () => {
+    const secretKey = "ai-secret-key-98765";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: {
+          message: `Invalid request for key ${secretKey} on resource foo`,
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      await googleJson("https://example.googleapis.com/v1/test", secretKey, { maxRetries: 0 });
+      expect.unreachable();
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(AppError);
+      const appErr = err as AppError;
+      expect(appErr.message).not.toContain(secretKey);
+      expect(appErr.message).toContain("[REDACTED]");
+    }
+  });
 });
