@@ -6,44 +6,53 @@ import type {
   PlaceSuggestion,
 } from "./types";
 
+async function readError(res: Response, fallback: string): Promise<Error> {
+  const body = (await res.json().catch(() => ({}))) as { error?: string };
+  return new Error(body.error ?? fallback);
+}
+
+function postJson(url: string, body: unknown): Promise<Response> {
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 /** Fetches location suggestions for Indian cities and addresses via Places autocomplete. */
 export async function fetchPlaceSuggestions(
   query: string,
   sessionToken: string,
 ): Promise<readonly PlaceSuggestion[]> {
-  const url = `/api/places?q=${encodeURIComponent(query)}&token=${encodeURIComponent(sessionToken)}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const errorJson = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(errorJson.error ?? "Failed to fetch place suggestions");
-  }
-  const data = (await res.json()) as { suggestions?: PlaceSuggestion[] };
-  return data.suggestions ?? [];
+  const res = await postJson("/api/places", { input: query, sessionToken });
+  if (!res.ok) throw await readError(res, "Could not load places. Try again.");
+  const data = (await res.json()) as {
+    predictions?: { placeId: string; primaryText: string; secondaryText: string }[];
+  };
+  return (data.predictions ?? []).map((p) => ({
+    placeId: p.placeId,
+    mainText: p.primaryText,
+    secondaryText: p.secondaryText,
+  }));
 }
 
 /** Resolves a Place ID into geographic coordinates and an official label. */
-export async function fetchPlaceLocation(
-  placeId: string,
-  sessionToken: string,
-): Promise<Location> {
-  const url = `/api/places/${encodeURIComponent(placeId)}?token=${encodeURIComponent(sessionToken)}`;
+export async function fetchPlaceLocation(placeId: string, sessionToken: string): Promise<Location> {
+  const url = `/api/places/${encodeURIComponent(placeId)}?sessionToken=${encodeURIComponent(sessionToken)}`;
   const res = await fetch(url);
-  if (!res.ok) {
-    const errorJson = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(errorJson.error ?? "Failed to resolve place location");
-  }
-  return (await res.json()) as Location;
+  if (!res.ok) throw await readError(res, "Could not open that place. Pick another.");
+  const data = (await res.json()) as { place?: { label: string; lat: number; lng: number } };
+  if (!data.place) throw new Error("Could not open that place. Pick another.");
+  return { label: data.place.label, lat: data.place.lat, lng: data.place.lng };
 }
 
 /** Reverse-geocodes browser coordinates into an Indian location model. */
 export async function fetchReverseGeocode(lat: number, lng: number): Promise<Location> {
-  const url = `/api/geocode?lat=${lat}&lng=${lng}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const errorJson = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(errorJson.error ?? "Failed to geocode current location");
-  }
-  return (await res.json()) as Location;
+  const res = await postJson("/api/geocode", { lat, lng });
+  if (!res.ok) throw await readError(res, "Could not name your area. Search for it instead.");
+  const data = (await res.json()) as { location?: { label: string; lat: number; lng: number } };
+  if (!data.location) throw new Error("Could not name your area. Search for it instead.");
+  return { label: data.location.label, lat: data.location.lat, lng: data.location.lng };
 }
 
 /** Extracts household structure and activity schedules from freeform user descriptions. */
