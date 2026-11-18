@@ -97,6 +97,9 @@ export type Household = z.infer<typeof householdSchema>;
 export const hourlyAirSchema = z.object({
   hour: z.number().int().min(0).max(23),
   pm25: z.number().min(0).max(2000),
+  pm10: z.number().min(0).max(2000).optional(),
+  no2: z.number().min(0).max(2000).optional(),
+  o3: z.number().min(0).max(2000).optional(),
 });
 export type HourlyAir = z.infer<typeof hourlyAirSchema>;
 
