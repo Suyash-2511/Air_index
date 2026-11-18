@@ -1,131 +1,78 @@
 .card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
-  padding: var(--space-16);
-  background-color: var(--haze-1);
-  border: 1px solid var(--haze-2);
+  display: grid;
+  gap: var(--space-20);
+  padding: var(--space-20);
+  background: var(--glass-fallback);
+  border: 1px solid var(--rule);
   border-radius: var(--radius-panel);
+  box-shadow: var(--glass-shadow);
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-8);
-}
-
+.header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-8); }
 .title {
-  font-size: 1.125rem;
-  font-weight: 500;
-  color: var(--ink);
+  margin: 0;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.5rem; font-weight: 400; letter-spacing: -0.01em; color: var(--ink);
 }
-
-.metaGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--space-12);
+.remove {
+  min-height: 36px; padding: 0 var(--space-12);
+  border: 1px solid transparent; border-radius: 999px; background: transparent;
+  font-size: 0.875rem; color: var(--ink-2); cursor: pointer;
+  transition: background-color var(--duration-short) var(--ease-out), color var(--duration-short) var(--ease-out);
 }
+.remove:hover { background: var(--smog-soft); color: var(--smog-deep); }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
+.metaGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-12); }
+.field { display: grid; gap: var(--space-6); }
 .label {
-  font-size: 0.75rem;
-  font-family: var(--font-mono), monospace;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-2);
+  padding: 0;
+  font-family: var(--font-mono), monospace; font-size: 0.6875rem; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2);
+}
+.input {
+  width: 100%; min-height: 44px; padding: var(--space-8) var(--space-12);
+  font-size: 0.9375rem; color: var(--ink);
+  background: var(--field); border: 1px solid var(--rule); border-radius: var(--radius-sm);
+  transition: border-color var(--duration-short) var(--ease-out);
+}
+.input:hover { border-color: var(--ink-2); }
+
+.fieldset { display: grid; gap: var(--space-8); margin: 0; padding: 0; border: 0; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-8);
+  min-height: 40px; padding: 0 var(--space-12);
+  border: 1px solid var(--rule); border-radius: 999px; background: var(--field);
+  font-size: 0.875rem; color: var(--ink-2); cursor: pointer;
+  transition: background-color var(--duration-short) var(--ease-out), border-color var(--duration-short) var(--ease-out), color var(--duration-short) var(--ease-out);
+}
+.chip input { width: 16px; height: 16px; margin: 0; accent-color: var(--smog-deep); }
+.chip:hover { border-color: var(--ink-2); }
+.chip:has(input:checked) { background: var(--smog-soft); border-color: var(--smog); color: var(--ink); }
+
+.day { display: grid; gap: var(--space-12); }
+.dayHead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
+.planned { font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--smog-deep); }
+.planned[data-complete="true"] { color: var(--clean); }
+.progress { height: 4px; border-radius: 999px; background: var(--rule); overflow: hidden; }
+.progress span {
+  display: block; height: 100%; background: var(--clean); transform-origin: left;
+  transition: transform var(--duration-normal) var(--ease-out);
 }
 
-.input, .select {
+.blocks { display: grid; gap: var(--space-8); margin: 0; padding: 0; }
+
+.add {
   min-height: 44px;
-  padding: var(--space-8) var(--space-12);
-  border: 1px solid var(--haze-2);
-  border-radius: var(--radius-btn);
-  background-color: var(--haze-0);
-  color: var(--ink);
+  border: 1px dashed var(--rule); border-radius: var(--radius-btn); background: transparent;
+  font-size: 0.9375rem; color: var(--ink-2); cursor: pointer;
+  transition: border-color var(--duration-short) var(--ease-out), color var(--duration-short) var(--ease-out), background-color var(--duration-short) var(--ease-out);
 }
+.add:hover { border-color: var(--ink-2); color: var(--ink); background: var(--field); }
+.add:active { transform: scale(0.99); }
 
-.input:focus, .select:focus {
-  outline: 2px solid var(--amber);
-  outline-offset: 1px;
-}
+.errorText { margin: 0; font-size: 0.8125rem; color: var(--smog-deep); }
 
-.sensitivities {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-12);
-  align-items: center;
-}
-
-.checkboxLabel {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  font-size: 0.875rem;
-  cursor: pointer;
-  min-height: 44px;
-  color: var(--ink);
-}
-
-.windowsSection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
-.windowRow {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr auto;
-  gap: var(--space-8);
-  align-items: center;
-  padding: var(--space-8);
-  background-color: var(--haze-0);
-  border: 1px solid var(--haze-2);
-  border-radius: var(--radius-btn);
-}
-
-@media (max-width: 600px) {
-  .windowRow {
-    grid-template-columns: 1fr;
-  }
-}
-
-.buttonSmall {
-  min-height: 44px;
-  min-width: 44px;
-  padding: var(--space-4) var(--space-8);
-  font-size: 0.875rem;
-  background-color: transparent;
-  border: 1px solid var(--haze-2);
-  border-radius: var(--radius-btn);
-  color: var(--ink);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color var(--duration-short) var(--ease-out);
-}
-
-.buttonSmall:hover {
-  background-color: var(--haze-2);
-}
-
-.buttonDelete {
-  color: var(--ink-2);
-}
-
-.buttonDelete:hover {
-  color: var(--amber-deep);
-}
-
-.errorText {
-  font-size: 0.8125rem;
-  color: var(--amber-deep);
+@media (prefers-reduced-motion: reduce) {
+  .progress span { transition: none; }
 }

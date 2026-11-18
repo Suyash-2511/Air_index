@@ -2,15 +2,19 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-  padding: var(--space-16);
-  background-color: var(--haze-1);
-  border: 1px solid var(--haze-2);
+  padding: var(--space-20);
+  background-color: var(--glass-fallback);
+  border: 1px solid var(--rule);
   border-radius: var(--radius-panel);
+  box-shadow: var(--glass-shadow);
 }
 
 .title {
-  font-size: 1.125rem;
-  font-weight: 500;
+  margin: 0;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 
@@ -38,9 +42,9 @@
 .select {
   min-height: 44px;
   padding: var(--space-8) var(--space-12);
-  border: 1px solid var(--haze-2);
-  border-radius: var(--radius-btn);
-  background-color: var(--haze-0);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  background-color: var(--field);
   color: var(--ink);
 }
 

@@ -20,7 +20,7 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
       <div className={styles.grid}>
         <div className={styles.field}>
           <label htmlFor="window-habit-select" className={styles.label}>
-            Window Habit
+            Windows
           </label>
           <select
             id="window-habit-select"
@@ -33,7 +33,7 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
             }
             className={styles.select}
           >
-            <option value="kept_closed">Kept closed mostly</option>
+            <option value="kept_closed">Mostly kept closed</option>
             <option value="open_sometimes">Open sometimes</option>
             <option value="open_often">Open often</option>
           </select>
@@ -41,7 +41,7 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
 
         <div className={styles.field}>
           <label htmlFor="cooking-fuel-select" className={styles.label}>
-            Primary Cooking Fuel
+            Main cooking fuel
           </label>
           <select
             id="cooking-fuel-select"
@@ -54,11 +54,11 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
             }
             className={styles.select}
           >
-            <option value="lpg">LPG Cylinder</option>
-            <option value="piped_gas">Piped Natural Gas (PNG)</option>
-            <option value="electric">Electric / Induction</option>
+            <option value="lpg">LPG cylinder</option>
+            <option value="piped_gas">Piped gas (PNG)</option>
+            <option value="electric">Electric or induction</option>
             <option value="kerosene">Kerosene</option>
-            <option value="biomass">Biomass / Wood</option>
+            <option value="biomass">Wood, dung or crop waste</option>
           </select>
         </div>
 
@@ -70,7 +70,7 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
               onChange={(e) => onChange({ ...home, hasPurifier: e.target.checked })}
               className={styles.checkbox}
             />
-            <span>Air purifier in home</span>
+            <span>We have an air purifier</span>
           </label>
 
           {home.hasPurifier && (
@@ -82,8 +82,8 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
               }
               className={styles.select}
             >
-              <option value="living">Located in living room</option>
-              <option value="bedroom">Located in bedroom</option>
+              <option value="living">In the living room</option>
+              <option value="bedroom">In the bedroom</option>
             </select>
           )}
         </div>
@@ -96,7 +96,7 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
               onChange={(e) => onChange({ ...home, hasExhaustFan: e.target.checked })}
               className={styles.checkbox}
             />
-            <span>Kitchen exhaust fan / chimney</span>
+            <span>Kitchen chimney or exhaust fan</span>
           </label>
 
           <label className={styles.checkboxGroup}>
@@ -106,7 +106,7 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
               onChange={(e) => onChange({ ...home, smokingIndoors: e.target.checked })}
               className={styles.checkbox}
             />
-            <span>Smoking indoors</span>
+            <span>Someone smokes indoors</span>
           </label>
         </div>
       </div>

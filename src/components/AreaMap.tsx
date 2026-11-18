@@ -27,7 +27,7 @@ export function AreaMap({ lat, lng, label }: AreaMapProps) {
         {hasError ? (
           <div className={styles.fallback}>
             <p className={styles.fallbackText}>
-              Map preview appears when a Google Maps key is set.
+              The area map could not load right now.
             </p>
           </div>
         ) : (

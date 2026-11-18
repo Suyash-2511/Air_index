@@ -46,7 +46,7 @@ describe("AreaMap", () => {
     fireEvent.error(basemap);
 
     expect(
-      screen.getByText("Map preview appears when a Google Maps key is set."),
+      screen.getByText("The area map could not load right now."),
     ).toBeDefined();
     expect(
       screen.queryByRole("img", {

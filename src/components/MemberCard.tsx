@@ -2,19 +2,16 @@
 
 import { validateSchedule } from "@/lib/exposure/schedule";
 import {
-  ACTIVITIES,
   AGE_BANDS,
   SENSITIVITIES,
-  type Activity,
   type ActivityWindow,
   type AgeBand,
   type HouseholdMember,
   type Sensitivity,
 } from "@/lib/types";
-import { IconCross } from "./icons";
+import { AGE_BAND_LABELS, SENSITIVITY_LABELS, formatDuration } from "./labels";
+import { RoutineBlock } from "./RoutineBlock";
 import styles from "./MemberCard.module.css";
-
-const COMMON_DURATIONS = [30, 60, 90, 120, 180, 240, 300, 360, 480, 540, 600, 720, 840, 960] as const;
 
 /** Props for the MemberCard editing component. */
 export interface MemberCardProps {
@@ -24,140 +21,109 @@ export interface MemberCardProps {
   canRemove: boolean;
 }
 
+/** Starts a new block where the person's last block ends. */
+function nextBlock(windows: readonly ActivityWindow[]): ActivityWindow {
+  const last = windows[windows.length - 1];
+  const end = last ? (last.startHour * 60 + last.durationMinutes) / 60 : 18;
+  return { activity: "rest_indoor", setting: "indoor", startHour: Math.floor(end) % 24, durationMinutes: 60, room: "living", mask: false };
+}
+
 /**
- * Editable card for a household member: label, age band, respiratory/cardiovascular
- * sensitivities, and daily routine activity windows.
+ * Editable card for one person: name, age group, health conditions and the
+ * blocks of their day, with a bar showing how much of 24 hours is planned.
  */
 export function MemberCard({ member, onUpdate, onRemove, canRemove }: MemberCardProps) {
   const problems = validateSchedule(member.windows);
   const totalMinutes = member.windows.reduce((sum, w) => sum + w.durationMinutes, 0);
+  const plannedPct = Math.min(100, (totalMinutes / 1440) * 100);
+  const sortedIdx = member.windows.map((w, i) => ({ w, i })).sort((a, b) => a.w.startHour - b.w.startHour);
 
   const toggleSensitivity = (s: Sensitivity) => {
-    const exists = member.sensitivities.includes(s);
-    const updated = exists ? member.sensitivities.filter((x) => x !== s) : [...member.sensitivities, s];
-    onUpdate({ ...member, sensitivities: updated });
+    const has = member.sensitivities.includes(s);
+    onUpdate({ ...member, sensitivities: has ? member.sensitivities.filter((x) => x !== s) : [...member.sensitivities, s] });
   };
 
   const updateWindow = (index: number, partial: Partial<ActivityWindow>) => {
     onUpdate({ ...member, windows: member.windows.map((w, i) => (i === index ? { ...w, ...partial } : w)) });
   };
 
-  const addWindow = () => {
-    const w: ActivityWindow = { activity: "rest_indoor", setting: "indoor", startHour: 18, durationMinutes: 120, room: "living", mask: false };
-    onUpdate({ ...member, windows: [...member.windows, w] });
-  };
-
   const removeWindow = (index: number) => {
-    if (member.windows.length > 1) {
-      onUpdate({ ...member, windows: member.windows.filter((_, i) => i !== index) });
-    }
+    if (member.windows.length > 1) onUpdate({ ...member, windows: member.windows.filter((_, i) => i !== index) });
   };
 
   return (
-    <div className={styles.card}>
-      <div className={styles.header}>
-        <h3 className={styles.title}>{member.label}</h3>
+    <article className={styles.card} aria-labelledby={`member-title-${member.id}`}>
+      <header className={styles.header}>
+        <h3 id={`member-title-${member.id}`} className={styles.title}>{member.label || "Unnamed"}</h3>
         {canRemove && onRemove && (
-          <button type="button" onClick={onRemove} className={`${styles.buttonSmall} ${styles.buttonDelete}`} aria-label={`Remove ${member.label}`}>
+          <button type="button" onClick={onRemove} className={styles.remove} aria-label={`Remove ${member.label}`}>
             Remove
           </button>
         )}
-      </div>
+      </header>
 
       <div className={styles.metaGrid}>
-        <div className={styles.field}>
-          <label htmlFor={`member-label-${member.id}`} className={styles.label}>Name / Label</label>
-          <input
-            id={`member-label-${member.id}`}
-            type="text"
-            value={member.label}
-            onChange={(e) => onUpdate({ ...member, label: e.target.value })}
-            className={styles.input}
-          />
-        </div>
-
-        <div className={styles.field}>
-          <label htmlFor={`member-age-${member.id}`} className={styles.label}>Age Band</label>
-          <select
-            id={`member-age-${member.id}`}
-            value={member.ageBand}
-            onChange={(e) => onUpdate({ ...member, ageBand: e.target.value as AgeBand })}
-            className={styles.select}
-          >
-            {AGE_BANDS.map((b) => (
-              <option key={b} value={b}>{b.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
-            ))}
+        <label className={styles.field}>
+          <span className={styles.label}>Name</span>
+          <input type="text" value={member.label} onChange={(e) => onUpdate({ ...member, label: e.target.value })} className={styles.input} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>Age group</span>
+          <select value={member.ageBand} onChange={(e) => onUpdate({ ...member, ageBand: e.target.value as AgeBand })} className={styles.input}>
+            {AGE_BANDS.map((b) => <option key={b} value={b}>{AGE_BAND_LABELS[b]}</option>)}
           </select>
-        </div>
+        </label>
       </div>
 
-      <div className={styles.field}>
-        <span className={styles.label}>Health & Vulnerability Flags</span>
-        <div className={styles.sensitivities}>
+      <fieldset className={styles.fieldset}>
+        <legend className={styles.label}>Health conditions</legend>
+        <div className={styles.chips}>
           {SENSITIVITIES.map((s) => (
-            <label key={s} className={styles.checkboxLabel}>
+            <label key={s} className={styles.chip}>
               <input type="checkbox" checked={member.sensitivities.includes(s)} onChange={() => toggleSensitivity(s)} />
-              <span>{s.replace(/_/g, " ")}</span>
+              <span>{SENSITIVITY_LABELS[s]}</span>
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      <div className={styles.windowsSection}>
-        <div className={styles.header}>
-          <span className={styles.label}>Daily Routine ({totalMinutes}m / 1440m)</span>
-          <button type="button" onClick={addWindow} className={styles.buttonSmall}>+ Add time block</button>
+      <section className={styles.day} aria-label={`${member.label}'s day`}>
+        <div className={styles.dayHead}>
+          <span className={styles.label}>A typical day</span>
+          <span className={styles.planned} data-complete={totalMinutes === 1440}>
+            {formatDuration(totalMinutes)} of 24 hr
+          </span>
+        </div>
+        <div
+          className={styles.progress}
+          role="progressbar"
+          aria-label="Hours of the day planned"
+          aria-valuemin={0}
+          aria-valuemax={24}
+          aria-valuenow={Math.round(totalMinutes / 60)}
+        >
+          <span style={{ transform: `scaleX(${plannedPct / 100})` }} />
         </div>
 
-        {member.windows.map((w, idx) => (
-          <div key={idx} className={styles.windowRow}>
-            <select
-              aria-label={`Activity for window ${idx + 1}`}
-              value={w.activity}
-              onChange={(e) => updateWindow(idx, {
-                activity: e.target.value as Activity,
-                setting: e.target.value.startsWith("commute_") ? "vehicle" : e.target.value.startsWith("outdoor_") ? "outdoor" : "indoor",
-              })}
-              className={styles.select}
-            >
-              {ACTIVITIES.map((act) => <option key={act} value={act}>{act.replace(/_/g, " ")}</option>)}
-            </select>
+        <ol className={styles.blocks}>
+          {sortedIdx.map(({ w, i }) => (
+            <RoutineBlock
+              key={i}
+              index={i}
+              window={w}
+              canDelete={member.windows.length > 1}
+              onChange={(partial) => updateWindow(i, partial)}
+              onDelete={() => removeWindow(i)}
+            />
+          ))}
+        </ol>
 
-            <select
-              aria-label={`Start hour for window ${idx + 1}`}
-              value={w.startHour}
-              onChange={(e) => updateWindow(idx, { startHour: parseInt(e.target.value, 10) })}
-              className={styles.select}
-            >
-              {Array.from({ length: 24 }, (_, h) => (
-                <option key={h} value={h}>{h.toString().padStart(2, "0")}:00</option>
-              ))}
-            </select>
+        <button type="button" onClick={() => onUpdate({ ...member, windows: [...member.windows, nextBlock(member.windows)] })} className={styles.add}>
+          + Add time block
+        </button>
 
-            <select
-              aria-label={`Duration for window ${idx + 1}`}
-              value={w.durationMinutes}
-              onChange={(e) => updateWindow(idx, { durationMinutes: parseInt(e.target.value, 10) })}
-              className={styles.select}
-            >
-              {COMMON_DURATIONS.map((m) => <option key={m} value={m}>{m / 60}h ({m}m)</option>)}
-            </select>
-
-            <label className={styles.checkboxLabel}>
-              <input type="checkbox" checked={w.mask} onChange={(e) => updateWindow(idx, { mask: e.target.checked })} />
-              <span>Mask</span>
-            </label>
-
-            {member.windows.length > 1 && (
-              <button type="button" onClick={() => removeWindow(idx)} className={`${styles.buttonSmall} ${styles.buttonDelete}`} aria-label={`Delete window ${idx + 1}`}>
-                <IconCross size={12} />
-              </button>
-            )}
-          </div>
-        ))}
-
-        {problems.length > 0 && <div className={styles.errorText} role="alert">{problems.join("; ")}</div>}
-      </div>
-    </div>
+        {problems.length > 0 && <p className={styles.errorText} role="alert">{problems.join(" ")}</p>}
+      </section>
+    </article>
   );
 }

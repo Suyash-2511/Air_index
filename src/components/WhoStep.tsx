@@ -112,12 +112,12 @@ export function WhoStep({
         Who lives here?
       </h2>
       <p className={styles.description}>
-        Describe your family routine in one sentence, or refine each person's hours and home setup below.
+        Tell us who is at home and how their day goes. Write it in a sentence, or edit each person below.
       </p>
 
       <div className={styles.intakeBox}>
         <label htmlFor="intake-textarea" className={styles.description}>
-          Describe your family in plain English:
+          Describe your family's day in one or two sentences
         </label>
         <textarea
           id="intake-textarea"
@@ -132,7 +132,7 @@ export function WhoStep({
           disabled={loading || !sentence.trim()}
           className={styles.buttonSecondary}
         >
-          {loading ? "Reading your routine..." : "Fill in the form from this"}
+          {loading ? "Reading your routine…" : "Fill in the form from this"}
         </button>
       </div>
 

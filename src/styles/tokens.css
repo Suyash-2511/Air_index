@@ -42,6 +42,10 @@
   --glass-fallback: #0F131A;
   --glass-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.6);
   --halo: rgba(143, 200, 232, 0.07);
+  --surface: #121821;
+  --field: #0B0F15;
+  --atmos-soft: rgba(143, 200, 232, 0.14);
+  --atmos-deep: #8FC8E8;
 
   /* Convenience aliases for shared components */
   --haze-0: var(--sky-0);
@@ -79,6 +83,10 @@
   --glass-fallback: #FBF9F5;
   --glass-shadow: 0 24px 48px -24px rgba(70, 48, 24, 0.22);
   --halo: rgba(194, 97, 31, 0.10);
+  --surface: #FFFDF9;
+  --field: #F6F3EE;
+  --atmos-soft: #E2EEF5;
+  --atmos-deep: #2E6383;
 
   --haze-0: var(--sky-0);
   --haze-1: var(--sky-1);
