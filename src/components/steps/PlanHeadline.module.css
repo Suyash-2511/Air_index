@@ -1,0 +1,128 @@
+.headlineArea {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  max-width: 760px;
+  padding: var(--space-16) 0 var(--space-32);
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  font-family: var(--font-mono), monospace;
+  font-size: var(--fs-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--smog-deep);
+  animation: fadeIn 700ms var(--ease-out) 60ms both;
+}
+
+.kicker::before {
+  content: "";
+  width: var(--space-32);
+  height: 1px;
+  background: var(--smog-deep);
+}
+
+.headlineMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  font-weight: 400;
+  letter-spacing: var(--tracking-display);
+  color: var(--ink);
+}
+
+.lead {
+  display: block;
+  font-family: var(--font-display), "Times New Roman", Georgia, serif;
+  font-size: var(--fs-title);
+  line-height: 1.1;
+  animation: rise 900ms var(--ease-out) 160ms both;
+}
+
+.lead:last-child {
+  animation-delay: 900ms;
+  color: var(--ink-2);
+}
+
+.figureMask {
+  display: block;
+  overflow: hidden;
+  padding: var(--space-4) 0 var(--space-8);
+}
+
+.figure {
+  display: block;
+  font-family: var(--font-display), "Times New Roman", Georgia, serif;
+  font-size: clamp(88px, 14vw, 192px);
+  line-height: 0.88;
+  color: var(--smog);
+  font-variant-numeric: lining-nums tabular-nums;
+  animation: lineReveal 1200ms var(--ease-out) 320ms both;
+}
+
+.unit {
+  font-size: 0.26em;
+  letter-spacing: 0;
+  color: var(--ink-2);
+}
+
+.meter {
+  height: 6px;
+  margin-top: var(--space-12);
+  background: var(--teal-soft);
+  overflow: hidden;
+  transform-origin: left center;
+  animation: draw 1200ms var(--ease-out) 700ms both;
+}
+
+.meterFill {
+  display: block;
+  height: 100%;
+  background: var(--smog);
+  transform-origin: left center;
+  transform: scaleX(var(--scale, 1));
+  transition: transform 900ms var(--ease-move);
+}
+
+.meterLabels {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-16);
+  font-family: var(--font-mono), monospace;
+  font-size: var(--fs-label);
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  animation: fadeIn 700ms var(--ease-out) 1000ms both;
+}
+
+.headlineCut {
+  margin-top: var(--space-12);
+  font-size: var(--fs-lead);
+  color: var(--clean);
+  font-weight: 500;
+  animation: rise 800ms var(--ease-out) 1050ms both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lineReveal {
+  from { opacity: 0; transform: translateY(48px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes draw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}

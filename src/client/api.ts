@@ -1,14 +1,25 @@
-import type { Location, Household } from "@/lib/types";
+import type { Household, Location } from "@/lib/types";
+import {
+  airApiResponseSchema,
+  askApiResponseSchema,
+  errorResponseSchema,
+  geocodeApiResponseSchema,
+  intakeApiResponseSchema,
+  placeLocationApiResponseSchema,
+  placesApiResponseSchema,
+  planApiResponseSchema,
+} from "./schemas";
 import type {
   AskApiResponse,
   IntakeApiResponse,
-  PlanApiResponse,
   PlaceSuggestion,
+  PlanApiResponse,
 } from "./types";
 
 async function readError(res: Response, fallback: string): Promise<Error> {
-  const body = (await res.json().catch(() => ({}))) as { error?: string };
-  return new Error(body.error ?? fallback);
+  const json = await res.json().catch(() => ({}));
+  const parsed = errorResponseSchema.safeParse(json);
+  return new Error(parsed.success && parsed.data.error ? parsed.data.error : fallback);
 }
 
 function postJson(url: string, body: unknown): Promise<Response> {
@@ -26,10 +37,8 @@ export async function fetchPlaceSuggestions(
 ): Promise<readonly PlaceSuggestion[]> {
   const res = await postJson("/api/places", { input: query, sessionToken });
   if (!res.ok) throw await readError(res, "Could not load places. Try again.");
-  const data = (await res.json()) as {
-    predictions?: { placeId: string; primaryText: string; secondaryText: string }[];
-  };
-  return (data.predictions ?? []).map((p) => ({
+  const data = placesApiResponseSchema.parse(await res.json());
+  return data.predictions.map((p) => ({
     placeId: p.placeId,
     mainText: p.primaryText,
     secondaryText: p.secondaryText,
@@ -41,18 +50,16 @@ export async function fetchPlaceLocation(placeId: string, sessionToken: string):
   const url = `/api/places/${encodeURIComponent(placeId)}?sessionToken=${encodeURIComponent(sessionToken)}`;
   const res = await fetch(url);
   if (!res.ok) throw await readError(res, "Could not open that place. Pick another.");
-  const data = (await res.json()) as { place?: { label: string; lat: number; lng: number } };
-  if (!data.place) throw new Error("Could not open that place. Pick another.");
-  return { label: data.place.label, lat: data.place.lat, lng: data.place.lng };
+  const data = placeLocationApiResponseSchema.parse(await res.json());
+  return data.place;
 }
 
 /** Reverse-geocodes browser coordinates into an Indian location model. */
 export async function fetchReverseGeocode(lat: number, lng: number): Promise<Location> {
   const res = await postJson("/api/geocode", { lat, lng });
   if (!res.ok) throw await readError(res, "Could not name your area. Search for it instead.");
-  const data = (await res.json()) as { location?: { label: string; lat: number; lng: number } };
-  if (!data.location) throw new Error("Could not name your area. Search for it instead.");
-  return { label: data.location.label, lat: data.location.lat, lng: data.location.lng };
+  const data = geocodeApiResponseSchema.parse(await res.json());
+  return data.location;
 }
 
 /** Extracts household structure and activity schedules from freeform user descriptions. */
@@ -66,10 +73,9 @@ export async function submitIntake(
     body: JSON.stringify({ text, location }),
   });
   if (!res.ok) {
-    const errorJson = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(errorJson.error ?? "Failed to parse household intake");
+    throw await readError(res, "Failed to parse household intake");
   }
-  return (await res.json()) as IntakeApiResponse;
+  return intakeApiResponseSchema.parse(await res.json());
 }
 
 /** Computes whole-day physical exposure doses and ranked interventions for a household. */
@@ -80,10 +86,9 @@ export async function computePlan(household: Household): Promise<PlanApiResponse
     body: JSON.stringify({ household }),
   });
   if (!res.ok) {
-    const errorJson = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(errorJson.error ?? "Failed to compute exposure plan");
+    throw await readError(res, "Failed to compute exposure plan");
   }
-  return (await res.json()) as PlanApiResponse;
+  return planApiResponseSchema.parse(await res.json());
 }
 
 /** Submits a follow-up question grounded strictly in the computed plan and household data. */
@@ -97,16 +102,9 @@ export async function askPlanQuestion(
     body: JSON.stringify({ question, household }),
   });
   if (!res.ok) {
-    const errorJson = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(errorJson.error ?? "Failed to answer plan question");
+    throw await readError(res, "Failed to answer plan question");
   }
-  const data = (await res.json()) as Partial<AskApiResponse>;
-  // Never trust the response shape: a missing list must not crash the plan page.
-  return {
-    answer: data.answer ?? "",
-    answerable: data.answerable ?? false,
-    citations: Array.isArray(data.citations) ? data.citations : [],
-  };
+  return askApiResponseSchema.parse(await res.json());
 }
 
 export interface CurrentAirReading {
@@ -114,8 +112,8 @@ export interface CurrentAirReading {
   aqi?: {
     value: number;
     category: string;
-    dominantPollutant?: string;
-  };
+    dominantPollutant?: string | undefined;
+  } | undefined;
 }
 
 /** Fetches current air reading including PM2.5 and AQI summary for landing display. */
@@ -127,12 +125,13 @@ export async function fetchCurrentAir(lat: number, lng: number): Promise<Current
       body: JSON.stringify({ lat, lng }),
     });
     if (!res.ok) return undefined;
-    const data = (await res.json()) as { current?: { pm25?: unknown; aqi?: { value: number; category: string; dominantPollutant?: string } } };
-    const pm25 = data.current?.pm25;
-    if (typeof pm25 !== "number" || !Number.isFinite(pm25)) return undefined;
+    const parsed = airApiResponseSchema.safeParse(await res.json());
+    if (!parsed.success) return undefined;
+    const { current } = parsed.data;
+    if (!Number.isFinite(current.pm25)) return undefined;
     return {
-      pm25,
-      ...(data.current?.aqi && { aqi: data.current.aqi }),
+      pm25: current.pm25,
+      ...(current.aqi && { aqi: current.aqi }),
     };
   } catch {
     return undefined;

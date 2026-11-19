@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { askPlanQuestion, fetchPlaceLocation, fetchPlaceSuggestions, fetchReverseGeocode } from "@/client/api";
+import {
+  askPlanQuestion,
+  computePlan,
+  fetchCurrentAir,
+  fetchPlaceLocation,
+  fetchPlaceSuggestions,
+  fetchReverseGeocode,
+  submitIntake,
+} from "@/client/api";
 
 function mockFetch(body: unknown, status = 200) {
   const fn = vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }));
@@ -49,3 +57,35 @@ describe("client contract with the location routes", () => {
   });
 });
 
+describe("client validation on malformed API payloads", () => {
+  it("rejects malformed place suggestions", async () => {
+    mockFetch({ predictions: [{ placeId: 123, primaryText: null }] });
+    await expect(fetchPlaceSuggestions("Nashik", "tok")).rejects.toThrow();
+  });
+
+  it("rejects malformed place location payload", async () => {
+    mockFetch({ place: { label: "Nashik", lat: "not-a-number", lng: 73.8 } });
+    await expect(fetchPlaceLocation("p1", "tok")).rejects.toThrow();
+  });
+
+  it("rejects malformed geocode payload", async () => {
+    mockFetch({ location: "wrong-format" });
+    await expect(fetchReverseGeocode(20, 73.8)).rejects.toThrow();
+  });
+
+  it("rejects malformed intake payload", async () => {
+    mockFetch({ household: { members: [] } });
+    await expect(submitIntake("Mother has asthma", { lat: 28, lng: 77, label: "Delhi" })).rejects.toThrow();
+  });
+
+  it("rejects malformed plan payload", async () => {
+    mockFetch({ baselineTotal: "invalid", ranked: [] });
+    await expect(computePlan({} as never)).rejects.toThrow();
+  });
+
+  it("returns undefined on malformed current air payload without throwing", async () => {
+    mockFetch({ current: { pm25: "bad" } });
+    const res = await fetchCurrentAir(28, 77);
+    expect(res).toBeUndefined();
+  });
+});

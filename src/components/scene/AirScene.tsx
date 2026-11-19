@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { EarthGlobe } from "./earth/EarthGlobe";
 import { FitCamera } from "./FitCamera";
 import { StaticFallback } from "./StaticFallback";
+import styles from "./AirScene.module.css";
 
 export interface AirSceneProps {
   lat?: number;
@@ -103,8 +104,7 @@ export function AirScene({
   return (
     <div
       ref={containerRef}
-      className={className}
-      style={{ width: "100%", height: "100%", position: "relative", animation: "scene-in 900ms var(--ease-out) both" }}
+      className={`${styles.sceneWrapper} ${className ?? ""}`.trim()}
       aria-hidden="true"
     >
       <Canvas

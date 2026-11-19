@@ -77,6 +77,45 @@ While inhaled dose calculations focus on PM2.5 due to its primary role in deep a
 - Gas concentrations provided in parts per billion (ppb) by Google Air Quality are converted at 1 atm and 25 °C via $\mu\text{g}/\text{m}^3 = (\text{ppb} \times \text{MW}) / 24.45$ for NO2 (46.01), O3 (48.00), and SO2 (64.07); and into $\text{mg}/\text{m}^3$ via $(\text{ppb} \times 28.01) / 24.45 / 1000$ for CO.
 - Saans reads India's official CPCB AQI (`ind_cpcb`) and dominant pollutant from Google Air Quality when available (`LOCAL_AQI`), and computes an exact sub-index fallback using official CPCB linear breakpoints across Good (0–50), Satisfactory (51–100), Moderate (101–200), Poor (201–300), Very poor (301–400), and Severe (401–500) bands.
 
+## Project Structure
+
+```
+saans/
+├── src/
+│   ├── app/                      # Next.js App Router (pages and API routes)
+│   │   ├── api/                  # 8 API routes (air, ask, geocode, health, intake, places, plan, staticmap, tiles)
+│   │   ├── layout.tsx            # Root layout with fonts and texture preloads
+│   │   └── page.tsx              # Coordinator page (Landing -> Step 1 -> Step 2 -> Step 3)
+│   ├── client/                   # Browser API client with Zod response parsing
+│   │   ├── api.ts                # Validated fetch helpers
+│   │   ├── schemas.ts            # Client-side Zod validation schemas
+│   │   └── types.ts              # Client contract models
+│   ├── components/               # Modular UI components grouped by responsibility
+│   │   ├── household/            # HomeSetupForm, MemberCard, RoutineBlock
+│   │   ├── landing/              # LandingHero, Masthead, StationReading
+│   │   ├── plan/                 # AirToday, AreaMap, AskPanel, ChangeCard, DayStrip, PlanActions, RoutineTimeline
+│   │   ├── scene/                # Three.js 3D Earth, smog dome, and accessible static fallback
+│   │   ├── steps/                # WhereStep, WhoStep, PlanStep, PlanHeadline, StepNav
+│   │   └── ui/                   # Combobox, inline SVG icons
+│   ├── data/                     # Sample and default multi-generational household routines
+│   ├── hooks/                    # Reusable React hooks (useBrowserLocation, useCountUp, useLocationSearch)
+│   ├── lib/                      # Core business logic and physical engine
+│   │   ├── air/                  # CPCB AQI calculator, units converter, mapper, cache, provider
+│   │   ├── brief/                # Community brief generator and read-aloud script
+│   │   ├── exposure/             # Physical dose calculation, infiltration, EPA breathing rates, schedule validation
+│   │   ├── format/               # Unified time and number formatters (en-IN grouping)
+│   │   ├── gemini/               # Structured Gemini client, prompt builders, repair engine, and grounding
+│   │   ├── google/               # Shared HTTP helper with retry, timeout, and key isolation
+│   │   ├── http/                 # Route helpers (rate limiting, JSON parsing, error responses)
+│   │   ├── interventions/        # Physical counterfactual dose engine, ranking, and combinations
+│   │   ├── maps/                 # Static map and Mercator projection math
+│   │   ├── places/               # Places autocomplete and reverse geocoding
+│   │   ├── routine/              # 24-hour chronological routine generator and Google Calendar links
+│   │   └── security/             # Token bucket rate limiting, prompt injection guard, safe errors
+│   └── styles/                   # Design tokens, variables, and global stylesheets
+└── tests/                        # Vitest test suite (68 test files, 336 tests: unit + component + security + E2E)
+```
+
 ## Assumptions
 
 - **Ambient Homogeneity**: Outdoor PM2.5 levels are assumed uniform across the immediate neighborhood (~1 km radius) as reported by the nearest monitor or satellite assimilation.

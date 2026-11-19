@@ -5,8 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import * as matchers from "vitest-axe/matchers.js";
 import type { RankedAction } from "@/client/types";
-import { AskPanel } from "@/components/AskPanel";
-import { ChangeCard } from "@/components/ChangeCard";
+import { AskPanel, ChangeCard } from "@/components/plan";
 import type { Household } from "@/lib/types";
 
 expect.extend(matchers);

@@ -24,12 +24,14 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+/** Root application metadata defining document title and description. */
 export const metadata: Metadata = {
   title: "Saans — Winter Smog Exposure Planner",
   description:
     "A glass of city air: estimates what your household actually breathes and shows how much each change cuts what you inhale.",
 };
 
+/** Root HTML layout wrapper configuring custom typography and texture preloads. */
 export default function RootLayout({ children }: { children: ReactNode }) {
   // Hint the globe images early so they are in flight before the 3D scene mounts.
   preload("/textures/earth-static.webp", { as: "image", fetchPriority: "high" });

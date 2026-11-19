@@ -2,7 +2,16 @@ import { z } from "zod";
 import { AppError } from "../security/errors";
 import type { HourlyAir } from "../types";
 import { calculateIndiaAqi, type ConcentrationInput, getAqiCategory } from "./india-aqi";
+import {
+  getLocalHour,
+  getLocationCurrentHour,
+  REGION_TIMEZONES,
+  type LocalHourResolution,
+} from "./timezone";
 import { convertPollutantConcentration, MOLECULAR_WEIGHTS } from "./units";
+
+export { getLocalHour, getLocationCurrentHour, REGION_TIMEZONES };
+export type { LocalHourResolution };
 
 export const PPB_TO_UGM3_FACTORS = {
   no2: MOLECULAR_WEIGHTS.no2 / 24.45,
@@ -10,15 +19,6 @@ export const PPB_TO_UGM3_FACTORS = {
   co: MOLECULAR_WEIGHTS.co / 24.45,
   so2: MOLECULAR_WEIGHTS.so2 / 24.45,
 } as const;
-
-export const REGION_TIMEZONES: Readonly<Record<string, string>> = {
-  in: "Asia/Kolkata",
-  us: "America/New_York",
-  gb: "Europe/London",
-  fr: "Europe/Paris",
-  de: "Europe/Berlin",
-  jp: "Asia/Tokyo",
-};
 
 export const concentrationSchema = z.object({ value: z.number(), units: z.string() });
 export const pollutantSchema = z.object({
@@ -51,38 +51,9 @@ export const forecastResponseSchema = z.object({
   hourlyForecasts: z.array(hourlyForecastRecordSchema).optional(),
 });
 
+/** Converts pollutant gas concentration from raw API units to Indian reporting standards. */
 export function convertConcentration(code: string, value: number, units: string): number {
   return convertPollutantConcentration(code, value, units);
-}
-
-export interface LocalHourResolution {
-  hour: number;
-  timeZone: string;
-  isFallback: boolean;
-}
-
-export function getLocalHour(isoTimestamp: string | undefined, regionCode?: string): LocalHourResolution {
-  if (!isoTimestamp) return { hour: 0, timeZone: "UTC", isFallback: true };
-  const match = /T(\d{2}):\d{2}:\d{2}(?:[+-]\d{2}:\d{2})$/.exec(isoTimestamp);
-  if (match && match[1]) return { hour: parseInt(match[1], 10), timeZone: "EmbeddedOffset", isFallback: false };
-
-  const date = new Date(isoTimestamp);
-  if (Number.isNaN(date.getTime())) return { hour: 0, timeZone: "UTC", isFallback: true };
-
-  const cleanRegion = regionCode?.trim().toLowerCase();
-  const timeZone = cleanRegion ? REGION_TIMEZONES[cleanRegion] : undefined;
-  if (timeZone) {
-    const fmt = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", hour12: false });
-    return { hour: parseInt(fmt.format(date), 10) % 24, timeZone, isFallback: false };
-  }
-  return { hour: date.getUTCHours(), timeZone: "UTC", isFallback: true };
-}
-
-export function getLocationCurrentHour(regionCode = "in", date: Date = new Date()): number {
-  const cleanRegion = regionCode.trim().toLowerCase();
-  const timeZone = REGION_TIMEZONES[cleanRegion] ?? "Asia/Kolkata";
-  const fmt = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", hour12: false });
-  return parseInt(fmt.format(date), 10) % 24;
 }
 
 interface ExtractedPollutants {
@@ -119,8 +90,7 @@ function resolveAqi(
     const val = Math.min(500, Math.max(0, Math.round(cpcb.aqi)));
     return {
       value: val,
-      // Google words CPCB categories differently ("Poor air quality"); use the CPCB band names.
-      category: getAqiCategory(val),
+      category: cpcb.category ?? getAqiCategory(val),
       dominantPollutant: (cpcb.dominantPollutant ?? "pm25").toLowerCase().replace(".", ""),
       source: "cpcb",
     };
@@ -131,6 +101,7 @@ function resolveAqi(
   return undefined;
 }
 
+/** Maps raw Google Air Quality current conditions response to internal HourlyAir model. */
 export function mapCurrentConditions(raw: unknown): HourlyAir {
   const parsed = currentConditionsResponseSchema.parse(raw);
   const { hour, isFallback } = getLocalHour(parsed.dateTime, parsed.regionCode);
@@ -155,6 +126,7 @@ export function mapCurrentConditions(raw: unknown): HourlyAir {
   };
 }
 
+/** Maps raw Google Air Quality forecast records to a list of hourly air readings. */
 export function mapForecast(raw: unknown, maxHours?: number): HourlyAir[] {
   const parsed = forecastResponseSchema.parse(raw);
   const items = parsed.hourlyForecasts ?? [];
@@ -183,6 +155,7 @@ export function mapForecast(raw: unknown, maxHours?: number): HourlyAir[] {
   return typeof maxHours === "number" && maxHours > 0 ? mapped.slice(0, maxHours) : mapped;
 }
 
+/** Merges current air conditions with upcoming forecast records into a 24-hour day forecast. */
 export function buildTodayForecast(current: HourlyAir, forecast: ReadonlyArray<HourlyAir>): HourlyAir[] {
   const result: HourlyAir[] = [current];
   const currentHour = current.hour;

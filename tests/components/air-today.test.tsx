@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { axe } from "vitest-axe";
 import * as matchers from "vitest-axe/matchers.js";
-import { AirToday } from "@/components/AirToday";
+import { AirToday } from "@/components/plan";
 import type { HourlyAir } from "@/lib/types";
 
 expect.extend(matchers);

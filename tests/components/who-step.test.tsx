@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import * as matchers from "vitest-axe/matchers.js";
-import { WhoStep } from "@/components/WhoStep";
+import { WhoStep } from "@/components/steps";
 import type { Household, Location } from "@/lib/types";
 
 expect.extend(matchers);

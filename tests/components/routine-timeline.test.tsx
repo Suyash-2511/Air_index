@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import * as matchers from "vitest-axe/matchers.js";
-import { RoutineTimeline } from "@/components/RoutineTimeline";
+import { RoutineTimeline } from "@/components/plan";
 import type { RoutineItem } from "@/lib/routine/build-routine";
 import type { Household } from "@/lib/types";
 

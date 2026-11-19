@@ -15,16 +15,19 @@ export const COMMUTE_FIT: Partial<Record<Activity, readonly string[]>> = {
   commute_vehicle: ["shift_commute_time", "shift_commute"],
 };
 
+/** Fallback commute action guidance when no specific ranked change matches. */
 export const COMMUTE_FALLBACK: Partial<Record<Activity, string>> = {
   commute_cycle: "Wear an N95 mask while cycling",
   commute_walk: "Wear an N95 mask while walking",
   commute_vehicle: "Keep car windows up, air on recirculate",
 };
 
+/** Selects the highest-saving ranked change matching a set of target intervention IDs. */
 export function bestFor(ranked: readonly RankedLike[], ids: readonly string[]): RankedLike | undefined {
   return ranked.filter((r) => ids.includes(r.id)).sort((a, b) => b.savedMicrograms - a.savedMicrograms)[0];
 }
 
+/** Resolves an intervention ID into a readable title. */
 export function titleFor(id: string): string {
   return INTERVENTION_TITLES[id] ?? id.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 }

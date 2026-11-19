@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { axe } from "vitest-axe";
 import * as matchers from "vitest-axe/matchers.js";
-import { DayStrip } from "@/components/DayStrip";
+import { DayStrip } from "@/components/plan";
 import type { DoseBreakdown, Household } from "@/lib/types";
 
 expect.extend(matchers);

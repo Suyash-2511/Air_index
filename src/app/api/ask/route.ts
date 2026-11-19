@@ -4,8 +4,8 @@ import { getAirProvider } from "@/lib/air";
 import { buildTodayForecast } from "@/lib/air/mapper";
 import { askQuestion } from "@/lib/gemini/ask";
 import { getInterventionTitle } from "@/lib/gemini/grounding";
+import { enforceRateLimit, getClientIp, jsonError, readJsonBody } from "@/lib/http/route-helpers";
 import { buildPlan } from "@/lib/interventions/rank";
-import { toSafeError } from "@/lib/security/errors";
 import { apiRateLimiter } from "@/lib/security/rate-limit";
 import { householdSchema, type DayForecast } from "@/lib/types";
 
@@ -16,61 +16,24 @@ const askRequestSchema = z.object({
   household: householdSchema,
 });
 
-/**
- * Question-answering endpoint grounded exclusively in the household's computed exposure plan.
- * Applies rate limiting, input payload validation, prompt injection defenses, and safe error masking.
- */
+/** Question-answering endpoint grounded exclusively in the household's computed exposure plan. */
 export async function POST(request: Request): Promise<Response> {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const firstForwarded = forwarded ? forwarded.split(",")[0] : undefined;
-  const ip = (firstForwarded ?? "127.0.0.1").trim();
+  const ip = getClientIp(request);
+  const rateLimitResponse = enforceRateLimit(apiRateLimiter, ip);
+  if (rateLimitResponse) return rateLimitResponse;
 
-  const rateCheck = apiRateLimiter.check(ip);
-  if (!rateCheck.allowed) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      {
-        status: 429,
-        headers: { "Retry-After": String(rateCheck.retryAfter) },
-      },
-    );
-  }
+  const bodyResult = await readJsonBody(request, MAX_BODY_BYTES);
+  if (bodyResult instanceof Response) return bodyResult;
 
-  const contentLength = request.headers.get("content-length");
-  if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
+  const parseResult = askRequestSchema.safeParse(bodyResult.data);
+  if (!parseResult.success) {
     return NextResponse.json(
-      { error: "Payload too large. Maximum body size is 8 KB." },
-      { status: 413 },
+      { error: "Invalid ask request. Question must be 2-500 characters with a valid household model." },
+      { status: 400 },
     );
   }
 
   try {
-    const rawText = await request.text();
-    if (new TextEncoder().encode(rawText).length > MAX_BODY_BYTES) {
-      return NextResponse.json(
-        { error: "Payload too large. Maximum body size is 8 KB." },
-        { status: 413 },
-      );
-    }
-
-    let jsonBody: unknown;
-    try {
-      jsonBody = JSON.parse(rawText);
-    } catch {
-      return NextResponse.json(
-        { error: "Malformed JSON payload." },
-        { status: 400 },
-      );
-    }
-
-    const parseResult = askRequestSchema.safeParse(jsonBody);
-    if (!parseResult.success) {
-      return NextResponse.json(
-        { error: "Invalid ask request. Question must be 2-500 characters with a valid household model." },
-        { status: 400 },
-      );
-    }
-
     const { question, household } = parseResult.data;
 
     const provider = getAirProvider();
@@ -82,12 +45,10 @@ export async function POST(request: Request): Promise<Response> {
     const computedPlan = buildPlan(household, dayForecastMap);
 
     const result = await askQuestion(question, computedPlan, household);
-
-    // The client shows cited changes by their plain-language titles, not internal ids.
     const citations = result.citedInterventionIds.map((id) => getInterventionTitle(id));
+
     return NextResponse.json({ ...result, citations }, { status: 200 });
   } catch (err: unknown) {
-    const safeError = toSafeError(err);
-    return NextResponse.json({ error: safeError.message }, { status: safeError.status });
+    return jsonError(err);
   }
 }

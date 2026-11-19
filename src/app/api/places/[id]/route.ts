@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit, getClientIp, jsonError } from "@/lib/http/route-helpers";
 import { fetchPlaceDetails } from "@/lib/places/autocomplete";
-import { toSafeError } from "@/lib/security/errors";
 import { apiRateLimiter } from "@/lib/security/rate-limit";
 
 interface RouteParams {
@@ -9,22 +9,11 @@ interface RouteParams {
   }>;
 }
 
-/**
- * Place details lookup endpoint.
- * Retrieves location coordinates and formatted address for a specified placeId.
- */
+/** Place details lookup endpoint retrieving location coordinates and address for a placeId. */
 export async function GET(request: Request, { params }: RouteParams): Promise<Response> {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const firstForwarded = forwarded ? forwarded.split(",")[0] : undefined;
-  const ip = (firstForwarded ?? "127.0.0.1").trim();
-
-  const rateCheck = apiRateLimiter.check(ip);
-  if (!rateCheck.allowed) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      { status: 429, headers: { "Retry-After": String(rateCheck.retryAfter) } },
-    );
-  }
+  const ip = getClientIp(request);
+  const rateLimitResponse = enforceRateLimit(apiRateLimiter, ip);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const { id } = await params;
@@ -38,7 +27,6 @@ export async function GET(request: Request, { params }: RouteParams): Promise<Re
     const place = await fetchPlaceDetails(id, sessionToken);
     return NextResponse.json({ place }, { status: 200 });
   } catch (err: unknown) {
-    const safeError = toSafeError(err);
-    return NextResponse.json({ error: safeError.message }, { status: safeError.status });
+    return jsonError(err);
   }
 }

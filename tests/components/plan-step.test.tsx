@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import * as matchers from "vitest-axe/matchers.js";
 import type { PlanApiResponse } from "@/client/types";
-import { PlanStep } from "@/components/PlanStep";
+import { PlanStep } from "@/components/steps";
 import type { Household } from "@/lib/types";
 
 expect.extend(matchers);

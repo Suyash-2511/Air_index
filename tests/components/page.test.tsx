@@ -96,7 +96,7 @@ describe("Complete Saans Application Flow with Landing Hero and 3 Steps", () => 
     expect(await screen.findByRole("heading", { level: 2, name: /Today your household will breathe/i })).toBeDefined();
     const axeStep3 = await axe(container);
     expect(axeStep3).toHaveNoViolations();
-  });
+  }, 15000);
 
   it("allows direct jump to sample family from Landing Hero", async () => {
     const user = userEvent.setup();

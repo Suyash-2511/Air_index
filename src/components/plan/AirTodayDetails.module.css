@@ -1,0 +1,36 @@
+.details {
+  padding: var(--space-12) var(--space-16);
+  background: var(--surface);
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  font-size: var(--fs-label);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.detailsBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detailsHeading {
+  font-weight: 600;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+}
+
+.disclaimer {
+  font-family: var(--font-sans);
+  font-size: var(--fs-label);
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin: 0;
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--rule);
+  font-style: italic;
+}

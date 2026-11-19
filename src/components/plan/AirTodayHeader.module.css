@@ -1,0 +1,90 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-12);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: var(--space-16);
+}
+
+.kicker {
+  font-family: var(--font-sans);
+  font-size: var(--fs-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.aqiRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-12);
+  margin-top: var(--space-4);
+}
+
+.aqiFigure {
+  font-family: var(--font-serif);
+  font-size: clamp(36px, 4.5vw, 56px);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.aqiLabel {
+  font-family: var(--font-sans);
+  font-size: var(--fs-label);
+  color: var(--ink-2);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.badge[data-category="good"] { color: var(--aqi-good); border-color: var(--aqi-good); }
+.badge[data-category="satisfactory"] { color: var(--aqi-satisfactory); border-color: var(--aqi-satisfactory); }
+.badge[data-category="moderate"] { color: var(--aqi-moderate); border-color: var(--aqi-moderate); }
+.badge[data-category="poor"] { color: var(--aqi-poor); border-color: var(--aqi-poor); }
+.badge[data-category="verypoor"] { color: var(--aqi-very-poor); border-color: var(--aqi-very-poor); }
+.badge[data-category="severe"] { color: var(--aqi-severe); border-color: var(--aqi-severe); }
+
+.badgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+  font-family: var(--font-sans);
+  font-size: var(--fs-label);
+  color: var(--ink-2);
+}
+
+.metaItem {
+  display: inline-flex;
+  gap: var(--space-4);
+}
+
+.metaEmphasis {
+  color: var(--ink);
+  font-weight: 500;
+}

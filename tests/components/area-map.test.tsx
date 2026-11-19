@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { axe } from "vitest-axe";
 import * as matchers from "vitest-axe/matchers.js";
-import { AreaMap } from "@/components/AreaMap";
+import { AreaMap } from "@/components/plan";
 
 expect.extend(matchers);
 

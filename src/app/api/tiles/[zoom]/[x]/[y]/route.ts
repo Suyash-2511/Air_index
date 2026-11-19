@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getHeatmapTile } from "@/lib/air/heatmap";
-import { toSafeError } from "@/lib/security/errors";
+import { enforceRateLimit, getClientIp, jsonError } from "@/lib/http/route-helpers";
 import { tileRateLimiter } from "@/lib/security/rate-limit";
 
 interface RouteParams {
@@ -11,26 +11,11 @@ interface RouteParams {
   }>;
 }
 
-/**
- * Air quality heatmap tile proxy endpoint.
- * Validates zoom (0-16) and x/y grid coordinates, enforces dedicated rate limits,
- * caches tiles in memory, and serves PNG tiles with public Cache-Control headers.
- */
+/** Air quality heatmap tile proxy endpoint serving cached PNG tiles. */
 export async function GET(request: Request, { params }: RouteParams): Promise<Response> {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const firstForwarded = forwarded ? forwarded.split(",")[0] : undefined;
-  const ip = (firstForwarded ?? "127.0.0.1").trim();
-
-  const rateCheck = tileRateLimiter.check(ip);
-  if (!rateCheck.allowed) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      {
-        status: 429,
-        headers: { "Retry-After": String(rateCheck.retryAfter) },
-      },
-    );
-  }
+  const ip = getClientIp(request);
+  const rateLimitResponse = enforceRateLimit(tileRateLimiter, ip);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const resolvedParams = await params;
@@ -52,7 +37,6 @@ export async function GET(request: Request, { params }: RouteParams): Promise<Re
       },
     });
   } catch (err: unknown) {
-    const safeError = toSafeError(err);
-    return NextResponse.json({ error: safeError.message }, { status: safeError.status });
+    return jsonError(err);
   }
 }

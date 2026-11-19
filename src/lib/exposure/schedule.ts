@@ -1,3 +1,4 @@
+import { formatClock } from "../format/time";
 import type { ActivityWindow, AgeBand } from "../types";
 
 /** Total minutes in a 24-hour day. */
@@ -5,8 +6,7 @@ export const MINUTES_IN_DAY = 1440;
 
 /** Plain wording for a block, e.g. "Cycling at 8 AM", used in schedule messages people read. */
 function describe(w: ActivityWindow): string {
-  const h = ((w.startHour % 24) + 24) % 24;
-  const clock = `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "AM" : "PM"}`;
+  const clock = formatClock(w.startHour);
   const name = w.activity.replace(/_/g, " ");
   return `${name.charAt(0).toUpperCase()}${name.slice(1)} at ${clock}`;
 }

@@ -25,8 +25,8 @@ export interface RankedAction {
     title: string;
     whyItHelps: string;
     steps: readonly string[];
-    sustainableAlternative?: string;
-  };
+    sustainableAlternative?: string | undefined;
+  } | undefined;
 }
 
 /** Complete plan API response returned by /api/plan. */

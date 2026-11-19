@@ -1,3 +1,5 @@
+import { formatMicrograms } from "./format/number";
+import { formatClock } from "./format/time";
 import type { RoutineItem } from "./routine/build-routine";
 
 /** The parts of a plan the brief needs, kept independent of UI types. */
@@ -14,11 +16,7 @@ export interface BriefInput {
 export const INDIA_24H_PM25_LIMIT = 60;
 
 /** Formats an hour as "7 AM" / "6 PM". */
-export function formatHour(hour: number): string {
-  const h = ((hour % 24) + 24) % 24;
-  const suffix = h < 12 ? "AM" : "PM";
-  return `${h % 12 === 0 ? 12 : h % 12} ${suffix}`;
-}
+export const formatHour = formatClock;
 
 /** Finds the hour with the dirtiest and cleanest outdoor air in the forecast. */
 export function forecastExtremes(forecast: BriefInput["forecast"]):
@@ -80,7 +78,7 @@ export function buildCommunityBrief(input: BriefInput): string {
 /** Builds the sentence-by-sentence script for the read-aloud button. */
 export function buildReadAloudScript(input: BriefInput): string {
   const parts = [
-    `Today your household will breathe about ${Math.round(input.householdMicrograms).toLocaleString("en-IN")} micrograms of fine particles.`,
+    `Today your household will breathe about ${formatMicrograms(input.householdMicrograms)} micrograms of fine particles.`,
   ];
   const extremes = forecastExtremes(input.forecast);
   if (extremes) {
