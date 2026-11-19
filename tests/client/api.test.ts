@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchPlaceLocation, fetchPlaceSuggestions, fetchReverseGeocode } from "@/client/api";
+import { askPlanQuestion, fetchPlaceLocation, fetchPlaceSuggestions, fetchReverseGeocode } from "@/client/api";
 
 function mockFetch(body: unknown, status = 200) {
   const fn = vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }));
@@ -40,4 +40,12 @@ describe("client contract with the location routes", () => {
     expect(init.method).toBe("POST");
     expect(loc).toEqual({ label: "Nashik", lat: 20, lng: 73.8 });
   });
+
+  it("returns an empty citations list when the answer has none", async () => {
+    mockFetch({ answer: "Yes.", answerable: true, citedInterventionIds: ["mask_outdoors"] });
+    const res = await askPlanQuestion("Mask?", {} as never);
+    expect(res.citations).toEqual([]);
+    expect(res.answer).toBe("Yes.");
+  });
 });
+

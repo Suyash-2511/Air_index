@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAirProvider } from "@/lib/air";
 import { buildTodayForecast } from "@/lib/air/mapper";
 import { askQuestion } from "@/lib/gemini/ask";
+import { getInterventionTitle } from "@/lib/gemini/grounding";
 import { buildPlan } from "@/lib/interventions/rank";
 import { toSafeError } from "@/lib/security/errors";
 import { apiRateLimiter } from "@/lib/security/rate-limit";
@@ -82,7 +83,9 @@ export async function POST(request: Request): Promise<Response> {
 
     const result = await askQuestion(question, computedPlan, household);
 
-    return NextResponse.json(result, { status: 200 });
+    // The client shows cited changes by their plain-language titles, not internal ids.
+    const citations = result.citedInterventionIds.map((id) => getInterventionTitle(id));
+    return NextResponse.json({ ...result, citations }, { status: 200 });
   } catch (err: unknown) {
     const safeError = toSafeError(err);
     return NextResponse.json({ error: safeError.message }, { status: safeError.status });

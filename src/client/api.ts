@@ -100,7 +100,13 @@ export async function askPlanQuestion(
     const errorJson = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(errorJson.error ?? "Failed to answer plan question");
   }
-  return (await res.json()) as AskApiResponse;
+  const data = (await res.json()) as Partial<AskApiResponse>;
+  // Never trust the response shape: a missing list must not crash the plan page.
+  return {
+    answer: data.answer ?? "",
+    answerable: data.answerable ?? false,
+    citations: Array.isArray(data.citations) ? data.citations : [],
+  };
 }
 
 export interface CurrentAirReading {

@@ -46,6 +46,9 @@ describe("POST /api/ask Route Security & Validation", () => {
     expect(data.answer).toBeDefined();
     expect(data.answerable).toBe(true);
     expect(data.citedInterventionIds).toBeInstanceOf(Array);
+    // The route also returns readable titles for the cited changes, which the panel shows.
+    expect(data.citations).toBeInstanceOf(Array);
+    expect(data.citations).toHaveLength(data.citedInterventionIds.length);
   });
 
   it("returns 400 when question is missing or too short", async () => {
