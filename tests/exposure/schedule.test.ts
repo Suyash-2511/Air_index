@@ -25,7 +25,7 @@ describe("Schedule Validation & Integrity", () => {
 
     const problems = validateSchedule(overDuration);
     expect(problems.length).toBeGreaterThan(0);
-    expect(problems.some((p) => p.includes("exceeding the 1440-minute"))).toBe(true);
+    expect(problems.some((p) => p.includes("longer than 24 hours"))).toBe(true);
   });
 
   it("detects overlap across midnight wrap correctly", () => {
@@ -55,7 +55,7 @@ describe("Schedule Validation & Integrity", () => {
 
     const problems = validateSchedule(corruptLiveWindows);
     expect(problems.length).toBeGreaterThan(0);
-    expect(problems.some((p) => p.includes("1920 minutes (32.0h)"))).toBe(true);
+    expect(problems.some((p) => p.includes("adds up to 32 hr, 8 hr longer than 24 hours"))).toBe(true);
     expect(problems.some((p) => p.includes("overlaps"))).toBe(true);
     expect(isScheduleValid(corruptLiveWindows)).toBe(false);
   });

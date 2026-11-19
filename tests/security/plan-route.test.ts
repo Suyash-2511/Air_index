@@ -134,6 +134,6 @@ describe("POST /api/plan Route Security & Validation", () => {
 
     const body = await res.json();
     expect(body.error).toContain("Aunt");
-    expect(body.error).toContain("exceeding the 1440-minute");
+    expect(body.error).toContain("longer than 24 hours");
   });
 });

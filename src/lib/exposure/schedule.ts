@@ -3,29 +3,42 @@ import type { ActivityWindow, AgeBand } from "../types";
 /** Total minutes in a 24-hour day. */
 export const MINUTES_IN_DAY = 1440;
 
+/** Plain wording for a block, e.g. "Cycling at 8 AM", used in schedule messages people read. */
+function describe(w: ActivityWindow): string {
+  const h = ((w.startHour % 24) + 24) % 24;
+  const clock = `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "AM" : "PM"}`;
+  const name = w.activity.replace(/_/g, " ");
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} at ${clock}`;
+}
+
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
 /**
  * Validates a household member's activity windows for schedule integrity.
  * Detects overlapping windows (including midnight wraps) and schedules > 1440m.
  */
 export function validateSchedule(windows: readonly ActivityWindow[]): string[] {
   const problems: string[] = [];
-  if (!windows || windows.length === 0) return ["Schedule must have at least one activity window."];
+  if (!windows || windows.length === 0) return ["Add at least one block to this day."];
 
   let totalMinutes = 0;
   for (let i = 0; i < windows.length; i++) {
     const w = windows[i];
     if (!w) continue;
     if (w.durationMinutes <= 0) {
-      problems.push(`Window ${i + 1} (${w.activity}) has non-positive duration (${w.durationMinutes}m).`);
+      problems.push(`${describe(w)} needs a length.`);
     } else if (w.durationMinutes > MINUTES_IN_DAY) {
-      problems.push(`Window ${i + 1} (${w.activity}) duration (${w.durationMinutes}m) exceeds 24 hours.`);
+      problems.push(`${describe(w)} is longer than a whole day.`);
     }
     totalMinutes += w.durationMinutes;
   }
 
   if (totalMinutes > MINUTES_IN_DAY) {
+    const extra = (totalMinutes - MINUTES_IN_DAY) / 60;
     problems.push(
-      `Total schedule duration is ${totalMinutes} minutes (${(totalMinutes / 60).toFixed(1)}h), exceeding the 1440-minute (24-hour) maximum.`,
+      `This day adds up to ${+(totalMinutes / 60).toFixed(1)} hr, ${+extra.toFixed(1)} hr longer than 24 hours. Shorten a block.`,
     );
   }
 
@@ -41,7 +54,7 @@ export function validateSchedule(windows: readonly ActivityWindow[]): string[] {
       const owner = minuteOwners[cur];
       if (owner !== undefined && owner !== -1 && owner !== i) {
         const prior = windows[owner];
-        problems.push(`Window ${i + 1} (${w.activity} at ${w.startHour}:00) overlaps with Window ${owner + 1} (${prior?.activity ?? ""}).`);
+        problems.push(`${describe(w)} overlaps ${prior ? lowerFirst(describe(prior)) : "another block"}. Move or shorten one.`);
         break;
       }
       minuteOwners[cur] = i;
