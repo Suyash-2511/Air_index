@@ -126,6 +126,8 @@ export async function generateStructured<T>(options: GenerateStructuredOptions<T
 
       return validated.data;
     } catch (err: unknown) {
+      // Server log only: the reason a Gemini call failed (no prompt or key content).
+      console.error(`[gemini] attempt ${attempt + 1} failed: ${err instanceof Error ? err.message.slice(0, 200) : "unknown error"}`);
       if (err instanceof AppError && err.status === 504) throw err;
       if (err instanceof AppError && err.status === 502 && (err.message.includes("schema") || err.message.includes("valid JSON"))) {
         throw err;

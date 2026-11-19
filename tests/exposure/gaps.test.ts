@@ -50,4 +50,16 @@ describe("Schedule Gap Filling", () => {
     const totalDuration = result.windows.reduce((sum, w) => sum + w.durationMinutes, 0);
     expect(totalDuration).toBe(1440);
   });
+
+  it("extends the previous block for a gap that starts mid-hour instead of colliding with it", () => {
+    const windows: ActivityWindow[] = [
+      { activity: "sleep", setting: "indoor", startHour: 22, durationMinutes: 600, room: "bedroom", mask: false },
+      { activity: "commute_cycle", setting: "outdoor", startHour: 8, durationMinutes: 30, room: "living", mask: false },
+      { activity: "rest_indoor", setting: "indoor", startHour: 10, durationMinutes: 720, room: "living", mask: false },
+    ];
+    const { windows: filled } = fillScheduleGaps(windows);
+    expect(validateSchedule(filled)).toEqual([]);
+    expect(filled.reduce((sum, w) => sum + w.durationMinutes, 0)).toBe(1440);
+  });
 });
+

@@ -88,6 +88,8 @@ export async function googleRequest(
         // Fall back to default error detail
       }
 
+      // Server log only (never sent to the client): which upstream failed and why.
+      console.error(`[google] ${new URL(url).hostname} HTTP ${status}: ${errorDetail}`);
       throw new AppError(status >= 500 ? 502 : status, errorDetail);
     } catch (err: unknown) {
       clearTimeout(timer);

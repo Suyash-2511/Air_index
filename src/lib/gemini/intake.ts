@@ -167,7 +167,9 @@ async function validateAndRepairMembers(members: HouseholdMember[]): Promise<{ m
       repairs.push(`Filled in a standard 24-hour non-overlapping schedule for ${normLabel}.`);
     }
 
-    const { windows: filledWindows, filledMinutes } = fillScheduleGaps(currentWindows);
+    let { windows: filledWindows, filledMinutes } = fillScheduleGaps(currentWindows);
+    // Last line of defence: the form must never open on a day that fails validation.
+    if (validateSchedule(filledWindows).length > 0) [filledWindows, filledMinutes] = [getDefaultScheduleForAgeBand(m.ageBand), 0];
     if (filledMinutes > 0) {
       repairs.push(`Filled ${filledMinutes} minutes of uncovered routine with indoor rest for ${normLabel}.`);
     }

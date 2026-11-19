@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/plan/route";
 import { planCache } from "@/lib/cache";
+import * as clientModule from "@/lib/gemini/client";
 import * as explainModule from "@/lib/gemini/explain";
 import { apiRateLimiter } from "@/lib/security/rate-limit";
 import type { Household } from "@/lib/types";
@@ -31,6 +32,19 @@ describe("POST /api/plan Route Security & Validation", () => {
     apiRateLimiter.reset();
     planCache.clear();
     vi.restoreAllMocks();
+  });
+
+  it("still returns the plan with grounded explanations when Gemini fails", async () => {
+    vi.spyOn(clientModule, "generateStructured").mockRejectedValueOnce(new Error("upstream 503"));
+    const res = await POST(new Request("http://localhost/api/plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-forwarded-for": "12.0.0.9" },
+      body: JSON.stringify({ household: validHousehold }),
+    }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.baselineTotal).toBeGreaterThan(0);
+    expect(body.ranked.every((r: { explanation?: unknown }) => r.explanation !== undefined)).toBe(true);
   });
 
   it("makes exactly one Gemini call on first request, zero on repeat (cache hit)", async () => {

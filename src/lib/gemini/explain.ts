@@ -116,7 +116,9 @@ export async function explainPlan(plan: Plan, household: Household): Promise<Rec
     responseSchema: explainResponseSchema,
     zodSchema: explainPlanResponseSchema,
     demoFixture: () => getDemoExplainFixture(plan, household),
-  });
+    // Every number is computed without Gemini, so a failed call must not fail the plan:
+    // fall back to the deterministic explanations, which are grounded in the same numbers.
+  }).catch(() => getDemoExplainFixture(plan, household));
 
   const resultMap: Record<string, ExplainedIntervention> = {};
 

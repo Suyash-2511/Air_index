@@ -137,6 +137,7 @@ export function fillScheduleGaps(windows: readonly ActivityWindow[]): { windows:
   let startScan = 0;
   while (startScan < MINUTES_IN_DAY && minuteOwners[startScan] === -1) startScan++;
 
+  const result: ActivityWindow[] = windows.map((w) => ({ ...w }));
   const gapWindows: ActivityWindow[] = [];
   let step = 0;
   while (step < MINUTES_IN_DAY) {
@@ -144,6 +145,15 @@ export function fillScheduleGaps(windows: readonly ActivityWindow[]): { windows:
     if (minuteOwners[actual] === -1) {
       let gapLen = 0;
       while (gapLen < MINUTES_IN_DAY && minuteOwners[(actual + gapLen) % MINUTES_IN_DAY] === -1) gapLen++;
+      // Blocks can only start on the hour, so a gap starting mid-hour (e.g. 8:30) extends
+      // the block before it instead of adding a block that would collide with it.
+      const before = minuteOwners[(actual - 1 + MINUTES_IN_DAY) % MINUTES_IN_DAY] ?? -1;
+      const prev = before >= 0 ? result[before] : undefined;
+      if (actual % 60 !== 0 && prev) {
+        prev.durationMinutes += gapLen;
+        step += gapLen;
+        continue;
+      }
       gapWindows.push({
         activity: "rest_indoor",
         setting: "indoor",
@@ -158,5 +168,5 @@ export function fillScheduleGaps(windows: readonly ActivityWindow[]): { windows:
     }
   }
 
-  return { windows: [...windows, ...gapWindows], filledMinutes: uncoveredCount };
+  return { windows: [...result, ...gapWindows], filledMinutes: uncoveredCount };
 }
