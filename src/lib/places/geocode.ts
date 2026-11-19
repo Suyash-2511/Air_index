@@ -1,15 +1,10 @@
 import { z } from "zod";
 import { getGoogleMapsApiKey, hasAirKey } from "../env";
-import { googleJson } from "../google/http";
+import { googleJson } from "../google";
 import { getFixtureReverseGeocode } from "./fixtures";
+import type { ReverseGeocodeResult } from "./types";
 
-/** Reverse geocoding result with user-friendly label. */
-export interface ReverseGeocodeResult {
-  label: string;
-  formattedAddress: string;
-  lat: number;
-  lng: number;
-}
+export type { ReverseGeocodeResult };
 
 const addressComponentSchema = z.object({
   long_name: z.string(),
@@ -29,36 +24,34 @@ const geocodeResponseSchema = z.object({
 
 type AddressComponent = z.infer<typeof addressComponentSchema>;
 
+/** Component types that name a neighbourhood, a city, and a district, in the order Google uses them. */
+const NEIGHBOURHOOD_TYPES = ["sublocality", "sublocality_level_1", "neighborhood"];
+const CITY_TYPES = ["locality", "postal_town"];
+const DISTRICT_TYPES = ["administrative_area_level_2"];
+/** How many comma-separated parts of the full address are kept when no component names a place. */
+const FALLBACK_ADDRESS_PARTS = 2;
+
+/** The name of the first address component of any of the given types, or "" when there is none. */
+function firstNameOfType(components: ReadonlyArray<AddressComponent>, types: readonly string[]): string {
+  return (
+    components
+      .filter((component) => component.types.some((type) => types.includes(type)))
+      .map((component) => component.long_name)
+      .find(Boolean) ?? ""
+  );
+}
+
 /**
  * Extracts a concise human-readable location label (e.g. "Connaught Place, New Delhi")
  * from Google Geocoding address components.
  */
 export function extractShortLabel(components: ReadonlyArray<AddressComponent>, fallbackAddress: string): string {
-  let sublocality = "";
-  let locality = "";
-  let adminArea2 = "";
+  const neighbourhood = firstNameOfType(components, NEIGHBOURHOOD_TYPES);
+  const city = firstNameOfType(components, CITY_TYPES) || firstNameOfType(components, DISTRICT_TYPES);
+  if (neighbourhood && city && neighbourhood !== city) return `${neighbourhood}, ${city}`;
 
-  for (const comp of components) {
-    if (comp.types.includes("sublocality") || comp.types.includes("sublocality_level_1") || comp.types.includes("neighborhood")) {
-      if (!sublocality) sublocality = comp.long_name;
-    }
-    if (comp.types.includes("locality") || comp.types.includes("postal_town")) {
-      if (!locality) locality = comp.long_name;
-    }
-    if (comp.types.includes("administrative_area_level_2")) {
-      if (!adminArea2) adminArea2 = comp.long_name;
-    }
-  }
-
-  const city = locality || adminArea2;
-  if (sublocality && city && sublocality !== city) {
-    return `${sublocality}, ${city}`;
-  }
-  if (city) return city;
-  if (sublocality) return sublocality;
-
-  const parts = fallbackAddress.split(",").map((s) => s.trim());
-  return parts.slice(0, 2).join(", ") || fallbackAddress;
+  const parts = fallbackAddress.split(",").map((part) => part.trim());
+  return city || neighbourhood || parts.slice(0, FALLBACK_ADDRESS_PARTS).join(", ") || fallbackAddress;
 }
 
 /**
@@ -66,26 +59,18 @@ export function extractShortLabel(components: ReadonlyArray<AddressComponent>, f
  * Uses X-Goog-Api-Key header authentication, falling back to regional fixtures in demo mode.
  */
 export async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocodeResult> {
-  if (!hasAirKey()) {
-    return getFixtureReverseGeocode(lat, lng);
-  }
-
   const key = getGoogleMapsApiKey();
-  if (!key) return getFixtureReverseGeocode(lat, lng);
+  if (!hasAirKey() || !key) return getFixtureReverseGeocode(lat, lng);
 
   const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}`;
   const raw = await googleJson(url, key);
   const parsed = geocodeResponseSchema.parse(raw);
   const firstResult = parsed.results?.[0];
 
-  if (!firstResult) {
-    return getFixtureReverseGeocode(lat, lng);
-  }
-
-  const label = extractShortLabel(firstResult.address_components, firstResult.formatted_address);
+  if (!firstResult) return getFixtureReverseGeocode(lat, lng);
 
   return {
-    label,
+    label: extractShortLabel(firstResult.address_components, firstResult.formatted_address),
     formattedAddress: firstResult.formatted_address,
     lat,
     lng,

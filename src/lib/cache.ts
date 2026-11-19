@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { HOURS_PER_DAY, MILLISECONDS_PER_DAY, MILLISECONDS_PER_HOUR, MILLISECONDS_PER_MINUTE } from "./time-units";
 
 /** Cache operational metrics for monitoring cache efficacy. */
 export interface CacheStats {
@@ -17,8 +18,8 @@ interface CacheEntry<T> {
  * Protects user privacy by ensuring raw coordinates never appear in memory keys or logs.
  */
 export function hashLocationHourKey(lat: number, lng: number, hour: number): string {
-  const normalizedHour = ((hour % 24) + 24) % 24;
-  const rawKey = `${lat.toFixed(2)},${lng.toFixed(2)}@${normalizedHour}`;
+  const normalizedHour = ((hour % HOURS_PER_DAY) + HOURS_PER_DAY) % HOURS_PER_DAY;
+  const rawKey = `${lat.toFixed(AIR_KEY_DECIMALS)},${lng.toFixed(AIR_KEY_DECIMALS)}@${normalizedHour}`;
   return createHash("sha256").update(rawKey).digest("hex");
 }
 
@@ -28,9 +29,13 @@ export function hashNormalizedInputKey(input: string): string {
   return createHash("sha256").update(normalized).digest("hex");
 }
 
+/** Coordinates are rounded so nearby requests share a cache entry: 2 decimals is about 1 km for air, 3 about 100 m for place names. */
+const AIR_KEY_DECIMALS = 2;
+const GEOCODE_KEY_DECIMALS = 3;
+
 /** Hashes latitude and longitude rounded to 3 decimal places for reverse geocoding cache. */
 export function hashGeocodeKey(lat: number, lng: number): string {
-  const rawKey = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+  const rawKey = `${lat.toFixed(GEOCODE_KEY_DECIMALS)},${lng.toFixed(GEOCODE_KEY_DECIMALS)}`;
   return createHash("sha256").update(rawKey).digest("hex");
 }
 
@@ -44,7 +49,7 @@ export function hashPlanKey(
   localHour: number,
   promptVersion: string,
 ): string {
-  const normalizedHour = ((localHour % 24) + 24) % 24;
+  const normalizedHour = ((localHour % HOURS_PER_DAY) + HOURS_PER_DAY) % HOURS_PER_DAY;
   const raw = `${JSON.stringify(household)}@${dateStr}#${normalizedHour}!${promptVersion}`;
   return createHash("sha256").update(raw).digest("hex");
 }
@@ -53,6 +58,9 @@ export function hashPlanKey(
 export function tileKey(zoom: number, x: number, y: number): string {
   return `${zoom}/${x}/${y}`;
 }
+
+const DEFAULT_MAX_ENTRIES = 100;
+const DEFAULT_TTL_MS = 30 * MILLISECONDS_PER_MINUTE;
 
 /**
  * Lightweight in-memory Least Recently Used (LRU) cache with Time-To-Live (TTL) expiration.
@@ -65,7 +73,7 @@ export class LruCache<T> {
   private hitCount = 0;
   private missCount = 0;
 
-  constructor(maxSize = 100, defaultTtlMs = 30 * 60 * 1000) {
+  constructor(maxSize = DEFAULT_MAX_ENTRIES, defaultTtlMs = DEFAULT_TTL_MS) {
     this.maxSize = Math.max(1, maxSize);
     this.defaultTtlMs = Math.max(1, defaultTtlMs);
   }
@@ -142,17 +150,17 @@ export class LruCache<T> {
   }
 }
 
-/** Global 30-minute air forecast cache instance. */
-export const airCache = new LruCache<unknown>(100, 30 * 60 * 1000);
+/** Air readings move slowly, so half an hour is fresh enough and keeps the provider quota low. */
+export const airCache = new LruCache<unknown>(100, 30 * MILLISECONDS_PER_MINUTE);
 
-/** Global 24-hour Places autocomplete suggestions cache. */
-export const autocompleteCache = new LruCache<unknown>(200, 24 * 60 * 60 * 1000);
+/** Search suggestions for the same text rarely change, so they are kept for a day. */
+export const autocompleteCache = new LruCache<unknown>(200, MILLISECONDS_PER_DAY);
 
-/** Global 7-day reverse geocoding label cache. */
-export const geocodeCache = new LruCache<unknown>(500, 7 * 24 * 60 * 60 * 1000);
+/** Place names for a coordinate are stable, so they are kept for a week. */
+export const geocodeCache = new LruCache<unknown>(500, 7 * MILLISECONDS_PER_DAY);
 
-/** Global 30-minute heatmap tile cache (bounded to 1,000 tiles). */
-export const tileCache = new LruCache<Uint8Array>(1000, 30 * 60 * 1000);
+/** Heatmap tiles follow the air forecast; 1,000 tiles bound the memory used. */
+export const tileCache = new LruCache<Uint8Array>(1000, 30 * MILLISECONDS_PER_MINUTE);
 
-/** Global 1-hour computed and explained exposure plan cache. */
-export const planCache = new LruCache<unknown>(100, 60 * 60 * 1000);
+/** A computed plan stays valid for the hour it was computed for. */
+export const planCache = new LruCache<unknown>(100, MILLISECONDS_PER_HOUR);

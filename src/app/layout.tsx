@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { preload } from "react-dom";
 import type { ReactNode } from "react";
-import { LocaleProvider } from "@/hooks/useLocale";
+import { LocaleProvider } from "@/hooks";
 import "@/styles/globals.css";
 
 const instrumentSerif = Instrument_Serif({

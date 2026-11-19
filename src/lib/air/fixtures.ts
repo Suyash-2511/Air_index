@@ -3,7 +3,7 @@ import { calculateIndiaAqi } from "./india-aqi";
 import type { AirProvider } from "./provider";
 
 /** Illustrative deterministic 24-hour winter smog profile for New Delhi. */
-export const DELHI_SEVERE_WINTER_FIXTURE: readonly HourlyAir[] = [
+const DELHI_SEVERE_WINTER_FIXTURE: readonly HourlyAir[] = [
   { hour: 0, pm25: 240, pm10: 380, no2: 65, o3: 20, co: 2.1, so2: 24 },
   { hour: 1, pm25: 250, pm10: 395, no2: 68, o3: 18, co: 2.2, so2: 25 },
   { hour: 2, pm25: 260, pm10: 410, no2: 70, o3: 16, co: 2.3, so2: 26 },
@@ -31,7 +31,7 @@ export const DELHI_SEVERE_WINTER_FIXTURE: readonly HourlyAir[] = [
 ];
 
 /** Illustrative deterministic 24-hour moderate winter profile for Mumbai. */
-export const MUMBAI_MODERATE_WINTER_FIXTURE: readonly HourlyAir[] = [
+const MUMBAI_MODERATE_WINTER_FIXTURE: readonly HourlyAir[] = [
   { hour: 0, pm25: 65, pm10: 95, no2: 35, o3: 22, co: 1.0, so2: 14 },
   { hour: 1, pm25: 68, pm10: 98, no2: 36, o3: 20, co: 1.0, so2: 14 },
   { hour: 2, pm25: 70, pm10: 102, no2: 38, o3: 18, co: 1.1, so2: 15 },
@@ -59,7 +59,7 @@ export const MUMBAI_MODERATE_WINTER_FIXTURE: readonly HourlyAir[] = [
 ];
 
 /** Illustrative deterministic 24-hour clean profile for Nashik. */
-export const NASHIK_CLEAN_WINTER_FIXTURE: readonly HourlyAir[] = [
+const NASHIK_CLEAN_WINTER_FIXTURE: readonly HourlyAir[] = [
   { hour: 0, pm25: 22, pm10: 32, no2: 14, o3: 20, co: 0.5, so2: 8 },
   { hour: 1, pm25: 24, pm10: 35, no2: 15, o3: 18, co: 0.5, so2: 8 },
   { hour: 2, pm25: 25, pm10: 36, no2: 16, o3: 16, co: 0.5, so2: 8 },
@@ -87,7 +87,7 @@ export const NASHIK_CLEAN_WINTER_FIXTURE: readonly HourlyAir[] = [
 ];
 
 /** Selects the closest regional fixture dataset based on coordinates. */
-export function getClosestFixture(location: Location): readonly HourlyAir[] {
+function getClosestFixture(location: Location): readonly HourlyAir[] {
   const defaultTarget = { city: "delhi", lat: 28.61, lng: 77.21, data: DELHI_SEVERE_WINTER_FIXTURE };
   const targets = [
     defaultTarget,

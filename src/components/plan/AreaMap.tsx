@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
-import { useLocale } from "@/hooks/useLocale";
-import { roundForMap, tilesForPreview } from "@/lib/maps/projection";
+import { useState } from "react";
+import { useLocale } from "@/hooks";
+import { roundForMap, tilesForPreview } from "@/lib/maps/client";
+import { cssVars } from "../ui";
 import styles from "./AreaMap.module.css";
 
 /** Props for the AreaMap component displaying the local PM2.5 heatmap. */
-export interface AreaMapProps {
+interface AreaMapProps {
   lat: number;
   lng: number;
   label: string;
@@ -48,12 +49,12 @@ export function AreaMap({ lat, lng, label }: AreaMapProps) {
                   alt=""
                   aria-hidden="true"
                   className={styles.tile}
-                  style={{
+                  style={cssVars({
                     "--left": `${tile.leftPct}%`,
                     "--top": `${tile.topPct}%`,
                     "--w": `${tile.widthPct}%`,
                     "--h": `${tile.heightPct}%`,
-                  } as CSSProperties}
+                  })}
                 />
               ))}
             </div>

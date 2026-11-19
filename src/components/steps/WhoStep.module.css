@@ -21,21 +21,7 @@
 }
 
 .kicker {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  font-family: var(--font-mono), monospace;
-  font-size: var(--fs-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--smog-deep);
-}
-
-.kicker::before {
-  content: "";
-  width: var(--space-32);
-  height: 1px;
-  background: var(--smog-deep);
+  composes: kicker from "../../styles/kicker.module.css";
 }
 
 .heading {

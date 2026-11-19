@@ -1,19 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
-import { computePlan, fetchCurrentAir, type CurrentAirReading } from "@/client/api";
-import type { PlanApiResponse } from "@/client/types";
-import { LandingHero, Masthead } from "@/components/landing";
-import { PlanStep, StepNav, WhereStep, WhoStep, type StepNumber } from "@/components/steps";
-import { getDefaultHousehold, getSampleHousehold } from "@/data/sampleHousehold";
-import { useBrowserLocation } from "@/hooks/useBrowserLocation";
-import { useLocale } from "@/hooks/useLocale";
-import { StaticFallback } from "@/components/scene/StaticFallback";
-import type { Household, Location } from "@/lib/types";
+import { useEffect, useRef } from "react";
+import { Masthead } from "@/components/landing";
+import { StaticFallback } from "@/components/scene";
+import { StepNav } from "@/components/steps";
+import { type HomeFlow, type HomeStep, type LiveHome, useHomeFlow, useLiveHome, useLocale, useTheme } from "@/hooks";
+import { StepPanel } from "./StepPanel";
 import styles from "./page.module.css";
 
-const loadScene = () => import("@/components/scene/AirScene").then((m) => m.AirScene);
+const loadScene = () => import("@/components/scene/AirScene").then((module) => module.AirScene);
 
 // The still Earth shows at first paint while the 3D chunk streams in behind it.
 const AirScene = dynamic(loadScene, { ssr: false, loading: () => <StaticFallback /> });
@@ -21,147 +17,73 @@ const AirScene = dynamic(loadScene, { ssr: false, loading: () => <StaticFallback
 // Start fetching the 3D chunk as soon as this module runs, not after hydration.
 if (typeof window !== "undefined") void loadScene();
 
-const DELHI_LOCATION: Location = {
-  lat: 28.6139,
-  lng: 77.209,
-  label: "Connaught Place, New Delhi, Delhi",
-};
+const LANDING_STEP = 0;
+const PLAN_STEP = 3;
 
-/** Coordinator for Saans: light theme by default, with the Three.js Earth centrepiece. */
-export default function HomePage() {
-  const { locale, t } = useLocale();
-  const [step, setStep] = useState<0 | StepNumber>(0);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [location, setLocation] = useState<Location | undefined>();
-  const [household, setHousehold] = useState<Household | undefined>();
-  const [assumedNotes, setAssumedNotes] = useState<readonly string[]>([]);
-  const [planData, setPlanData] = useState<PlanApiResponse | undefined>();
-  const [doseDensity, setDoseDensity] = useState(1.0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>();
-  const [landingAir, setLandingAir] = useState<CurrentAirReading | undefined>();
-  const [liveLocation, setLiveLocation] = useState<Location | undefined>();
+/** Landing shows the globe beside the headline; the plan gives the page over to a full-width layout. */
+function layoutClassFor(step: HomeStep): string {
+  if (step === PLAN_STEP) return styles.contentLayoutFull ?? "";
+  return (step === LANDING_STEP ? styles.contentLayoutHero : styles.contentLayout) ?? "";
+}
+
+/** Moves keyboard focus to the new step's heading so screen readers announce the change. */
+function useFocusStepHeading(step: HomeStep) {
   const mainRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
-
   useEffect(() => {
     mainRef.current?.querySelector<HTMLElement>("h2")?.focus();
   }, [step]);
+  return mainRef;
+}
 
-  // Live location is the default; New Delhi stands in until it is known or when it is blocked.
-  useBrowserLocation({ onLocationResolved: setLiveLocation });
-  const homeLat = liveLocation?.lat ?? DELHI_LOCATION.lat;
-  const homeLng = liveLocation?.lng ?? DELHI_LOCATION.lng;
+interface HomeSceneProps {
+  flow: HomeFlow;
+  home: LiveHome;
+  /** Outdoor PM2.5 to tint the still fallback with. */
+  pm25: number | undefined;
+  /** On the plan page the globe moves to the corner instead of sitting beside the form. */
+  isCorner: boolean;
+}
 
-  useEffect(() => {
-    let cancelled = false;
-    setLandingAir(undefined);
-    void fetchCurrentAir(homeLat, homeLng).then((value) => {
-      if (!cancelled) setLandingAir(value);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [homeLat, homeLng]);
+/** The Earth beside the form, turned to the chosen city once there is one. */
+function HomeScene({ flow, home, pm25, isCorner }: HomeSceneProps) {
+  const { location } = flow;
+  const place = location ?? home.liveLocation;
+  return (
+    <div className={isCorner ? styles.sceneContainerCorner : styles.sceneContainer}>
+      <AirScene
+        lat={place?.lat ?? home.lat}
+        lng={place?.lng ?? home.lng}
+        cityName={place?.label ?? "New Delhi"}
+        pm25={pm25}
+        density={flow.doseDensity}
+        focused={flow.step > LANDING_STEP && location !== undefined}
+      />
+    </div>
+  );
+}
 
-  const toggleTheme = () => setTheme((p) => (p === "light" ? "dark" : "light"));
-
-  const handleLocationConfirmed = (loc: Location, isDemo = false) => {
-    setLocation(loc);
-    setError(undefined);
-    if (isDemo) {
-      setHousehold(getSampleHousehold(loc));
-      setAssumedNotes(["No air purifier in the home", "No kitchen exhaust fan"]);
-    } else {
-      setHousehold(getDefaultHousehold(loc));
-      setAssumedNotes([]);
-    }
-    setStep(2);
-  };
-
-  const handleBuildPlan = async (currentHousehold: Household) => {
-    setHousehold(currentHousehold);
-    setLoading(true);
-    setError(undefined);
-    try {
-      const data = await computePlan(currentHousehold, locale);
-      setPlanData(data);
-      setDoseDensity(1.0);
-      setStep(3);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to calculate exposure plan");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const currentPm25 = planData?.air.current.pm25 ?? landingAir?.pm25;
-  const currentAqi = planData?.air.current.aqi ?? landingAir?.aqi;
+/** Coordinator for Saans: light theme by default, with the Three.js Earth centrepiece. */
+export default function HomePage() {
+  const { locale } = useLocale();
+  const { theme, toggleTheme } = useTheme();
+  const flow = useHomeFlow(locale);
+  const home = useLiveHome();
+  const { step } = flow;
+  const mainRef = useFocusStepHeading(step);
+  const pm25 = flow.planData?.air.current.pm25 ?? home.air?.pm25;
 
   return (
     <div className={styles.pageWrapper}>
-      <Masthead theme={theme} onToggleTheme={toggleTheme} compact={step > 0} />
-
-      {step > 0 && <StepNav currentStep={step as StepNumber} />}
-      {error && <div className={styles.errorBanner} role="alert">{error}</div>}
+      <Masthead theme={theme} onToggleTheme={toggleTheme} compact={step !== LANDING_STEP} />
+      {step !== LANDING_STEP && <StepNav currentStep={step} />}
+      {flow.error && <div className={styles.errorBanner} role="alert">{flow.error}</div>}
 
       <main id="main-content" ref={mainRef} className={styles.mainContent}>
-        <div className={step === 3 ? styles.contentLayoutFull : step === 0 ? styles.contentLayoutHero : styles.contentLayout}>
+        <div className={layoutClassFor(step)}>
           <div className={styles.panelContainer}>
-            {step === 0 && (
-              <LandingHero
-                livePm25={currentPm25}
-                aqi={currentAqi}
-                {...(liveLocation ? { cityName: liveLocation.label.split(",")[0] ?? liveLocation.label, isLive: true } : {})}
-                onPlanHome={() => setStep(1)}
-                onSampleFamily={() => handleLocationConfirmed(DELHI_LOCATION, true)}
-              />
-            )}
-
-            {loading && (
-              <div className={styles.loadingBanner} aria-live="polite" aria-busy="true">
-                <div className={styles.spinner} aria-hidden="true" />
-                <span>{t("loading_calculating_plan")}</span>
-              </div>
-            )}
-
-            {!loading && step === 1 && (
-              <WhereStep initialLocation={location} liveLocation={liveLocation} onLocationConfirmed={handleLocationConfirmed} />
-            )}
-
-            {!loading && step === 2 && location && (
-              <WhoStep
-                location={location}
-                initialHousehold={household}
-                initialAssumed={assumedNotes}
-                onBuildPlan={handleBuildPlan}
-                onBack={() => setStep(1)}
-              />
-            )}
-
-            {!loading && step === 3 && planData && household && (
-              <PlanStep
-                planData={planData}
-                household={household}
-                onBack={() => setStep(2)}
-                onDoseChange={(curr, base) => setDoseDensity(base > 0 ? curr / base : 1.0)}
-              />
-            )}
+            <StepPanel flow={flow} home={home} livePm25={pm25} />
           </div>
-
-          <div className={step === 3 ? styles.sceneContainerCorner : styles.sceneContainer}>
-            <AirScene
-              lat={location?.lat ?? homeLat}
-              lng={location?.lng ?? homeLng}
-              cityName={location?.label ?? liveLocation?.label ?? "New Delhi"}
-              pm25={currentPm25}
-              density={doseDensity}
-              focused={step > 0 && location !== undefined}
-            />
-          </div>
+          <HomeScene flow={flow} home={home} pm25={pm25} isCorner={step === PLAN_STEP} />
         </div>
       </main>
     </div>

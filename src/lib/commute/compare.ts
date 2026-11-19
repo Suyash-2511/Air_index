@@ -1,10 +1,13 @@
-import { rawRateM3PerMinute } from "@/lib/exposure/breathing-rates";
-import { VEHICLE_CABIN_FACTOR } from "@/lib/exposure/infiltration";
+import { MINUTES_PER_HOUR } from "../time-units";
+import { DEFAULT_COMMUTE_KM, MAX_COMMUTE_KM, MIN_COMMUTE_KM, MIN_TRIP_MINUTES } from "./constants";
+import { rawRateM3PerMinute } from "@/lib/exposure";
+import { VEHICLE_CABIN_FACTOR } from "@/lib/exposure";
 import type { TranslationKey } from "@/lib/i18n";
 import type { AgeBand } from "@/lib/types";
+import { roundTo } from "../format";
 
 /** Travel mode for urban daily commuting in India. */
-export type CommuteMode = "walk" | "cycle" | "bus" | "metro" | "auto" | "car";
+type CommuteMode = "walk" | "cycle" | "bus" | "metro" | "auto" | "car";
 
 /** Evaluated travel mode with physiological dose and greenhouse gas footprint. */
 export interface CommuteModeComparison {
@@ -21,14 +24,14 @@ export interface CommuteModeComparison {
 }
 
 /** Options for the multimodal commute evaluation. */
-export interface CommuteCompareOptions {
+interface CommuteCompareOptions {
   distanceKm?: number | undefined;
   outdoorPm25: number;
   ageBand?: AgeBand | undefined;
 }
 
 /** Result containing ranked commute modes and standout recommendations. */
-export interface CommuteComparisonResult {
+interface CommuteComparisonResult {
   distanceKm: number;
   modes: readonly CommuteModeComparison[];
   bestForLungs: CommuteModeComparison;
@@ -71,20 +74,28 @@ const MODE_SPECS: readonly ModeSpec[] = [
   { mode: "car", label: "Private car (solo)", speedKmh: 24, intensity: "sedentary", cabinInfiltration: VEHICLE_CABIN_FACTOR, co2GramsPerKm: 142 },
 ];
 
+/** The first mode that no later mode beats under the comparator. The mode list is never empty. */
+function firstBest(
+  modes: readonly CommuteModeComparison[],
+  compare: (a: CommuteModeComparison, b: CommuteModeComparison) => number,
+): CommuteModeComparison {
+  return modes.reduce((best, mode) => (compare(mode, best) < 0 ? mode : best));
+}
+
 /**
  * Compares commute modes for personal inhaled PM2.5 and trip CO2 emissions.
  */
 export function compareCommuteModes({
-  distanceKm = 8,
+  distanceKm = DEFAULT_COMMUTE_KM,
   outdoorPm25,
   ageBand = "adult",
 }: CommuteCompareOptions): CommuteComparisonResult {
-  const safeDistance = Math.max(0.5, Math.min(50, distanceKm));
+  const safeDistance = Math.max(MIN_COMMUTE_KM, Math.min(MAX_COMMUTE_KM, distanceKm));
 
   const list: CommuteModeComparison[] = MODE_SPECS.map((spec) => {
-    const durationMin = Math.max(1, Math.round((safeDistance / spec.speedKmh) * 60));
+    const durationMin = Math.max(MIN_TRIP_MINUTES, Math.round((safeDistance / spec.speedKmh) * MINUTES_PER_HOUR));
     const breathingRate = rawRateM3PerMinute(ageBand, spec.intensity);
-    const inhaledMicrograms = Math.round(outdoorPm25 * spec.cabinInfiltration * breathingRate * durationMin * 10) / 10;
+    const inhaledMicrograms = roundTo(outdoorPm25 * spec.cabinInfiltration * breathingRate * durationMin, 1);
     const co2Grams = Math.round(safeDistance * spec.co2GramsPerKm);
 
     return {
@@ -103,12 +114,11 @@ export function compareCommuteModes({
 
   list.sort((a, b) => a.inhaledMicrograms - b.inhaledMicrograms);
 
-  const bestForLungs = list[0]!;
+  const bestForLungs = firstBest(list, (a, b) => a.inhaledMicrograms - b.inhaledMicrograms);
   bestForLungs.isBestForLungs = true;
 
-  // Best for city is lowest CO2; for motorized/long transit, metro is cleanest
-  const sortedByCo2 = [...list].sort((a, b) => a.co2Grams - b.co2Grams || a.inhaledMicrograms - b.inhaledMicrograms);
-  const bestForCity = sortedByCo2[0]!;
+  // Best for the city is lowest CO2; ties go to whichever mode is easier on the lungs.
+  const bestForCity = firstBest(list, (a, b) => a.co2Grams - b.co2Grams || a.inhaledMicrograms - b.inhaledMicrograms);
   bestForCity.isBestForCity = true;
 
   return {

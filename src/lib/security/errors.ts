@@ -1,3 +1,5 @@
+import { HTTP_STATUS } from "./http-status";
+
 /**
  * User-safe application error containing an HTTP status code and sanitized message.
  * Internal technical details, provider payloads, and stack traces are excluded.
@@ -23,7 +25,7 @@ export function toSafeError(error: unknown): AppError {
     return error;
   }
   if (typeof error === "object" && error !== null && "name" in error && error.name === "ZodError") {
-    return new AppError(400, "Invalid request payload format.");
+    return new AppError(HTTP_STATUS.BAD_REQUEST, "Invalid request payload format.");
   }
-  return new AppError(500, "An internal error occurred. Please try again later.");
+  return new AppError(HTTP_STATUS.INTERNAL_ERROR, "An internal error occurred. Please try again later.");
 }

@@ -1,7 +1,7 @@
 import { LruCache } from "../cache";
 import { getGoogleMapsApiKey } from "../env";
-import { googleBinary } from "../google/http";
-import { AppError } from "../security/errors";
+import { googleBinary } from "../google";
+import { AppError, HTTP_STATUS } from "../security";
 import { MAP_PREVIEW, roundForMap } from "./projection";
 
 /** Muted map styling so the smog heatmap, not the basemap, carries the colour. */
@@ -42,7 +42,7 @@ export function buildStaticMapUrl(lat: number, lng: number, apiKey: string): str
  */
 export async function getStaticMap(lat: number, lng: number): Promise<Uint8Array> {
   const apiKey = getGoogleMapsApiKey();
-  if (!apiKey) throw new AppError(404, "Map preview is available when a Google Maps key is configured.");
+  if (!apiKey) throw new AppError(HTTP_STATUS.NOT_FOUND, "Map preview is available when a Google Maps key is configured.");
 
   const centre = roundForMap(lat, lng);
   const key = `${centre.lat},${centre.lng}`;

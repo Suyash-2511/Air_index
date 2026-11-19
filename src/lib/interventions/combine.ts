@@ -1,4 +1,4 @@
-import { householdDose } from "../exposure/dose";
+import { householdDose } from "../exposure";
 import type { DayForecast, DoseBreakdown, Household } from "../types";
 import { INTERVENTIONS, type Intervention } from "./catalogue";
 

@@ -1,8 +1,10 @@
 import type { TranslationKey } from "@/lib/i18n";
+import { roundTo } from "../format";
 
+/** Short code of a pollutant the app reports, as used in readings and in the health table. */
 export type PollutantCode = "pm25" | "pm10" | "no2" | "o3" | "co" | "so2";
 
-export interface PollutantInfo {
+interface PollutantInfo {
   readonly code: PollutantCode;
   readonly name: string;
   readonly label: string;
@@ -18,6 +20,7 @@ export interface PollutantInfo {
   readonly atRiskKey: TranslationKey;
 }
 
+/** The six pollutants shown in the air card, in display order. */
 export const CRITERIA_POLLUTANTS: readonly PollutantCode[] = [
   "pm25",
   "pm10",
@@ -27,6 +30,7 @@ export const CRITERIA_POLLUTANTS: readonly PollutantCode[] = [
   "so2",
 ] as const;
 
+/** Plain-language facts for each pollutant: the national limit, why it matters, where it comes from and who is most at risk. */
 export const POLLUTANT_INFO: Readonly<Record<PollutantCode, PollutantInfo>> = {
   pm25: {
     code: "pm25",
@@ -124,13 +128,15 @@ export const POLLUTANT_INFO: Readonly<Record<PollutantCode, PollutantInfo>> = {
 export function getPollutantLimitRatio(code: PollutantCode, concentration: number): number {
   const info = POLLUTANT_INFO[code];
   if (!info || !Number.isFinite(concentration) || concentration <= 0) return 0;
-  return Math.round((concentration / info.nationalLimit) * 10) / 10;
+  return roundTo(concentration / info.nationalLimit, 1);
 }
+
+const isPollutantCode = (code: string): code is PollutantCode => Object.hasOwn(POLLUTANT_INFO, code);
 
 /** Resolves pollutant metadata for a given dominant code string. */
 export function getDominantPollutantInfo(dominantCode?: string): PollutantInfo {
-  const clean = (dominantCode ?? "pm25").toLowerCase().replace(".", "") as PollutantCode;
-  return POLLUTANT_INFO[clean] ?? POLLUTANT_INFO.pm25;
+  const clean = (dominantCode ?? "pm25").toLowerCase().replace(".", "");
+  return isPollutantCode(clean) ? POLLUTANT_INFO[clean] : POLLUTANT_INFO.pm25;
 }
 
 /** Resolves translation key for an AQI category string. */

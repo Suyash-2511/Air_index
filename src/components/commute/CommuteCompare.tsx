@@ -1,13 +1,50 @@
 "use client";
 
 import { useId, useMemo, useState } from "react";
-import { useLocale } from "@/hooks/useLocale";
-import { type CommuteModeComparison, compareCommuteModes } from "@/lib/commute/compare";
+import { useLocale } from "@/hooks";
+import { type CommuteModeComparison, compareCommuteModes, DEFAULT_COMMUTE_KM, MAX_COMMUTE_KM } from "@/lib/commute";
 import type { AgeBand } from "@/lib/types";
 import styles from "./CommuteCompare.module.css";
+import { CommuteModeRow } from "./CommuteModeRow";
+
+/** The input does not offer less than a kilometre. */
+const MIN_DISTANCE_KM = 1;
+
+const COLUMN_HEADINGS = ["commute_th_mode", "commute_th_duration", "commute_th_dose", "commute_th_co2", "commute_th_action"] as const;
+
+interface DistanceFieldProps {
+  value: number;
+  onChange: (km: number) => void;
+}
+
+/** The one-way trip length the comparison is worked out for. */
+function DistanceField({ value, onChange }: DistanceFieldProps) {
+  const { t } = useLocale();
+  const inputId = useId();
+  return (
+    <div className={styles.controls}>
+      <div className={styles.distanceField}>
+        <label htmlFor={inputId} className={styles.label}>
+          {t("commute_distance_label")}
+        </label>
+        <input
+          id={inputId}
+          type="number"
+          min={MIN_DISTANCE_KM}
+          max={MAX_COMMUTE_KM}
+          step={1}
+          value={value}
+          onChange={(event) => onChange(parseFloat(event.target.value) || MIN_DISTANCE_KM)}
+          className={styles.input}
+        />
+        <span className={styles.label}>{t("commute_km")}</span>
+      </div>
+    </div>
+  );
+}
 
 /** Props for the CommuteCompare multi-modal evaluation table. */
-export interface CommuteCompareProps {
+interface CommuteCompareProps {
   outdoorPm25: number;
   ageBand?: AgeBand | undefined;
   activeInterventionIds?: readonly string[] | undefined;
@@ -26,27 +63,19 @@ export function CommuteCompare({
   onSelectMode,
 }: CommuteCompareProps) {
   const { t } = useLocale();
-  const [distanceKm, setDistanceKm] = useState(8);
+  const [distanceKm, setDistanceKm] = useState(DEFAULT_COMMUTE_KM);
   const [chosenMode, setChosenMode] = useState<string | undefined>();
-  const distanceInputId = useId();
 
-  const result = useMemo(() => {
-    return compareCommuteModes({
-      distanceKm,
-      outdoorPm25,
-      ageBand,
-    });
-  }, [distanceKm, outdoorPm25, ageBand]);
+  const result = useMemo(() => compareCommuteModes({ distanceKm, outdoorPm25, ageBand }), [distanceKm, outdoorPm25, ageBand]);
 
-  const handleUseMode = (comparison: CommuteModeComparison) => {
+  const useMode = (comparison: CommuteModeComparison) => {
     setChosenMode(comparison.mode);
-    if (comparison.matchingInterventionId && onApplyIntervention) {
-      onApplyIntervention(comparison.matchingInterventionId);
-    }
-    if (onSelectMode) {
-      onSelectMode(comparison);
-    }
+    if (comparison.matchingInterventionId) onApplyIntervention?.(comparison.matchingInterventionId);
+    onSelectMode?.(comparison);
   };
+
+  const isApplied = ({ matchingInterventionId, mode }: CommuteModeComparison): boolean =>
+    matchingInterventionId ? activeInterventionIds.includes(matchingInterventionId) : chosenMode === mode;
 
   return (
     <section className={styles.container} aria-labelledby="commute-compare-title">
@@ -54,75 +83,25 @@ export function CommuteCompare({
         <h3 id="commute-compare-title" className={styles.title}>
           {t("commute_heading")}
         </h3>
-        <p className={styles.subtitle}>
-          {t("commute_subtitle")}
-        </p>
+        <p className={styles.subtitle}>{t("commute_subtitle")}</p>
       </header>
 
-      <div className={styles.controls}>
-        <div className={styles.distanceField}>
-          <label htmlFor={distanceInputId} className={styles.label}>
-            {t("commute_distance_label")}
-          </label>
-          <input
-            id={distanceInputId}
-            type="number"
-            min={1}
-            max={50}
-            step={1}
-            value={distanceKm}
-            onChange={(e) => setDistanceKm(parseFloat(e.target.value) || 1)}
-            className={styles.input}
-          />
-          <span className={styles.label}>{t("commute_km")}</span>
-        </div>
-      </div>
+      <DistanceField value={distanceKm} onChange={setDistanceKm} />
 
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
-          <caption className="sr-only">
-            {t("commute_table_caption")}
-          </caption>
+          <caption className="sr-only">{t("commute_table_caption")}</caption>
           <thead>
             <tr>
-              <th scope="col" className={styles.th}>{t("commute_th_mode")}</th>
-              <th scope="col" className={styles.th}>{t("commute_th_duration")}</th>
-              <th scope="col" className={styles.th}>{t("commute_th_dose")}</th>
-              <th scope="col" className={styles.th}>{t("commute_th_co2")}</th>
-              <th scope="col" className={styles.th}>{t("commute_th_action")}</th>
+              {COLUMN_HEADINGS.map((key) => (
+                <th key={key} scope="col" className={styles.th}>{t(key)}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {result.modes.map((m) => {
-              const isApplied = m.matchingInterventionId
-                ? activeInterventionIds.includes(m.matchingInterventionId)
-                : chosenMode === m.mode;
-              const modeLabel = t(m.labelKey);
-
-              return (
-                <tr key={m.mode} className={styles.row} data-highlight={m.isBestForLungs || m.isBestForCity}>
-                  <th scope="row" className={styles.td}>
-                    {modeLabel}
-                    {m.isBestForLungs && <span className={styles.badgeLungs}>{t("commute_badge_lungs")}</span>}
-                    {m.isBestForCity && <span className={styles.badgeCity}>{t("commute_badge_city")}</span>}
-                  </th>
-                  <td className={styles.td}>{m.durationMin} {t("commute_min_unit")}</td>
-                  <td className={styles.td}>{m.inhaledMicrograms} {t("commute_ug_unit")}</td>
-                  <td className={styles.td}>{m.co2Grams} {t("commute_g_unit")}</td>
-                  <td className={styles.td}>
-                    <button
-                      type="button"
-                      className={styles.useBtn}
-                      data-active={isApplied}
-                      onClick={() => handleUseMode(m)}
-                      aria-label={t("commute_btn_aria", { mode: modeLabel })}
-                    >
-                      {isApplied ? t("commute_btn_applied") : t("commute_btn_use")}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+            {result.modes.map((comparison) => (
+              <CommuteModeRow key={comparison.mode} comparison={comparison} isApplied={isApplied(comparison)} onUse={useMode} />
+            ))}
           </tbody>
         </table>
       </div>

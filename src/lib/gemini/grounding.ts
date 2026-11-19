@@ -1,6 +1,7 @@
 import type { HourlyAir } from "@/lib/types";
-import { getInterventionTitle, INTERVENTION_TITLES } from "../interventions/titles";
-import type { Plan } from "../interventions/rank";
+import { getInterventionTitle, INTERVENTION_TITLES } from "../interventions";
+import type { Plan } from "../interventions";
+import { roundTo } from "../format";
 
 export { getInterventionTitle, INTERVENTION_TITLES };
 
@@ -40,7 +41,7 @@ export function stripInternalIds(
 }
 
 /** Extracts all allowed numerical values from a plan and current air reading. */
-export function extractPlanNumbers(plan: Plan, air?: HourlyAir): Set<number> {
+function extractPlanNumbers(plan: Plan, air?: HourlyAir): Set<number> {
   const allowed = new Set<number>(DOMAIN_ALLOWED_NUMBERS);
   const addVariants = (val: number | undefined): void => {
     if (val === undefined || !Number.isFinite(val)) return;
@@ -48,8 +49,8 @@ export function extractPlanNumbers(plan: Plan, air?: HourlyAir): Set<number> {
     allowed.add(Math.round(val));
     allowed.add(Math.floor(val));
     allowed.add(Math.ceil(val));
-    allowed.add(Math.round(val * 10) / 10);
-    allowed.add(Math.round(val * 100) / 100);
+    allowed.add(roundTo(val, 1));
+    allowed.add(roundTo(val, 2));
   };
 
   addVariants(plan.baselineTotal);
@@ -85,10 +86,10 @@ export function extractPlanNumbers(plan: Plan, air?: HourlyAir): Set<number> {
 }
 
 /** Checks whether a number parsed from LLM output is mathematically grounded. */
-export function isNumberGrounded(num: number, allowedNumbers: Set<number>): boolean {
+function isNumberGrounded(num: number, allowedNumbers: Set<number>): boolean {
   if (allowedNumbers.has(num)) return true;
   if (allowedNumbers.has(Math.round(num))) return true;
-  if (allowedNumbers.has(Math.round(num * 10) / 10)) return true;
+  if (allowedNumbers.has(roundTo(num, 1))) return true;
 
   for (const allowed of allowedNumbers) {
     if (Math.abs(num - allowed) < 0.15) return true;

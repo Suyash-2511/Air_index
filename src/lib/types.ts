@@ -6,7 +6,8 @@ import { z } from "zod";
  * rates apply to them. See src/lib/exposure/breathing-rates.ts.
  */
 export const AGE_BANDS = ["infant", "child", "teen", "adult", "older_adult"] as const;
-export const ageBandSchema = z.enum(AGE_BANDS);
+const ageBandSchema = z.enum(AGE_BANDS);
+/** Age group, which sets breathing rate and sensitivity. */
 export type AgeBand = z.infer<typeof ageBandSchema>;
 
 /**
@@ -15,7 +16,8 @@ export type AgeBand = z.infer<typeof ageBandSchema>;
  * weight when the household's options are ranked.
  */
 export const SENSITIVITIES = ["asthma", "copd", "heart_condition", "pregnancy"] as const;
-export const sensitivitySchema = z.enum(SENSITIVITIES);
+const sensitivitySchema = z.enum(SENSITIVITIES);
+/** A health condition that raises sensitivity to smoke. */
 export type Sensitivity = z.infer<typeof sensitivitySchema>;
 
 /**
@@ -34,19 +36,19 @@ export const ACTIVITIES = [
   "outdoor_exercise",
   "outdoor_play",
 ] as const;
-export const activitySchema = z.enum(ACTIVITIES);
+const activitySchema = z.enum(ACTIVITIES);
+/** What a person is doing during a block of the day. */
 export type Activity = z.infer<typeof activitySchema>;
 
 /** Where an activity happens decides whether outdoor or indoor air is breathed. */
-export const SETTINGS = ["indoor", "outdoor", "vehicle"] as const;
-export const settingSchema = z.enum(SETTINGS);
-export type Setting = z.infer<typeof settingSchema>;
+const SETTINGS = ["indoor", "outdoor", "vehicle"] as const;
+const settingSchema = z.enum(SETTINGS);
 
 /**
  * One block of a member's day. Hours are whole local hours (0–23) because
  * air-quality forecasts are hourly; a block may run past midnight.
  */
-export const activityWindowSchema = z.object({
+const activityWindowSchema = z.object({
   activity: activitySchema,
   setting: settingSchema,
   startHour: z.number().int().min(0).max(23),
@@ -54,8 +56,10 @@ export const activityWindowSchema = z.object({
   room: z.enum(["bedroom", "living"]).default("living"),
   mask: z.boolean().default(false),
 });
+/** One block of a person's day: what they do, when, for how long, where, and whether they wear a mask. */
 export type ActivityWindow = z.infer<typeof activityWindowSchema>;
 
+/** A person in the household with their age group, conditions and day. */
 export const householdMemberSchema = z.object({
   id: z.string().min(1).max(40),
   label: z.string().min(1).max(60),
@@ -63,9 +67,12 @@ export const householdMemberSchema = z.object({
   sensitivities: z.array(sensitivitySchema).max(SENSITIVITIES.length).default([]),
   windows: z.array(activityWindowSchema).min(1).max(24),
 });
+/** A person in the household. */
 export type HouseholdMember = z.infer<typeof householdMemberSchema>;
 
+/** How often the home's windows are open, from most to least outdoor air. */
 export const WINDOW_HABITS = ["open_often", "open_sometimes", "kept_closed"] as const;
+/** Cooking fuels in order of how much smoke they put into the home. */
 export const COOKING_FUELS = ["electric", "piped_gas", "lpg", "kerosene", "biomass"] as const;
 
 /** The home features that decide how much outdoor smog gets in and what is made indoors. */
@@ -77,29 +84,39 @@ export const homeSetupSchema = z.object({
   hasExhaustFan: z.boolean(),
   smokingIndoors: z.boolean(),
 });
+/** Features of the home that decide how much outdoor and indoor smoke reaches the people in it. */
 export type HomeSetup = z.infer<typeof homeSetupSchema>;
+/** How often the windows are open. */
+export type WindowHabit = HomeSetup["windowHabit"];
+/** The fuel the household cooks with. */
+export type CookingFuel = HomeSetup["cookingFuel"];
 
+/** A named place with coordinates. */
 export const locationSchema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
   label: z.string().min(1).max(120),
 });
+/** A named place with coordinates. */
 export type Location = z.infer<typeof locationSchema>;
 
+/** The household: its people, its home and where it is. */
 export const householdSchema = z.object({
   members: z.array(householdMemberSchema).min(1).max(8),
   home: homeSetupSchema,
   location: locationSchema,
 });
+/** The household: its people, its home and where it is. */
 export type Household = z.infer<typeof householdSchema>;
 
 /** Summary of Indian National Air Quality Index (CPCB) or computed fallback. */
-export const aqiSummarySchema = z.object({
+const aqiSummarySchema = z.object({
   value: z.number().min(0).max(500),
   category: z.string(),
   dominantPollutant: z.string(),
   source: z.enum(["cpcb", "computed"]),
 });
+/** The air quality index value, its category, and the pollutant that sets it. */
 export type AqiSummary = z.infer<typeof aqiSummarySchema>;
 
 /** One hour of outdoor air. All criteria concentrations are µg/m³; CO is mg/m³. */
@@ -114,6 +131,7 @@ export const hourlyAirSchema = z.object({
   aqi: aqiSummarySchema.optional(),
   timeZoneFallback: z.boolean().optional(),
 });
+/** Outdoor air for one hour: each pollutant that was reported, and the index when it could be worked out. */
 export type HourlyAir = z.infer<typeof hourlyAirSchema>;
 
 /** A full day of hourly outdoor PM2.5, keyed by hour for constant-time lookups. */
@@ -128,5 +146,4 @@ export interface DoseBreakdown {
 }
 
 /** How much effort or money a change takes, so families can pick realistic options. */
-export const EFFORT_LEVELS = ["free", "low_cost", "investment"] as const;
-export type Effort = (typeof EFFORT_LEVELS)[number];
+export type Effort = "free" | "low_cost" | "investment";

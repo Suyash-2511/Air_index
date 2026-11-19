@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { guardUserInput } from "../security/injection-guard";
+import { guardUserInput } from "../security";
 import { householdSchema, type Location } from "../types";
 import { generateStructured } from "./client";
 import {
@@ -12,20 +12,14 @@ import {
 } from "./intake-prompt";
 import { validateAndRepairMembers } from "./intake-repair";
 
-export {
-  buildConsistentAssumptions,
-  getDemoIntakeFixture,
-  INTAKE_SYSTEM_PROMPT,
-  intakeGeminiOutputSchema,
-  intakeResponseSchema,
-};
+export { buildConsistentAssumptions, getDemoIntakeFixture };
 
 /** Schema for intake results containing parsed household and explicit assumed field list. */
 export const intakeResultSchema = z.object({
   household: householdSchema,
   assumed: z.array(z.string()).min(1),
 });
-export type IntakeResult = z.infer<typeof intakeResultSchema>;
+type IntakeResult = z.infer<typeof intakeResultSchema>;
 
 /** Parses freeform user text into a validated Household model with location provided externally. */
 export async function intakeHousehold(rawText: string, location: Location): Promise<IntakeResult> {

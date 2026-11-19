@@ -4,7 +4,7 @@ import { z } from "zod";
  * Zod schema defining allowable environment variables.
  * All keys are marked optional so Saans can run in offline demo mode without configuration.
  */
-export const envSchema = z.object({
+const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   GOOGLE_MAPS_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),
@@ -13,13 +13,13 @@ export const envSchema = z.object({
 });
 
 /** Validated environment variable structure inferred from schema. */
-export type Env = z.infer<typeof envSchema>;
+type Env = z.infer<typeof envSchema>;
 
 /**
  * Reads and validates environment variables from process.env.
  * Never throws; returns an empty object if validation fails so demo mode works seamlessly.
  */
-export function getEnv(): Env {
+function getEnv(): Env {
   const result = envSchema.safeParse(process.env);
   if (!result.success) {
     return {};

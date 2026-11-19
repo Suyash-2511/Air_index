@@ -40,7 +40,7 @@
   --tracking-display: -0.025em;
   --tracking-label: 0.14em;
 
-  /* Phase 3R-EARTH Palette: Exactly as specified */
+  /* Earth palette: sky, land and smog tones used by the globe and its fallback. */
   --sky-0: #07090C;
   --sky-1: #0F131A;
   --rule: #1E2530;

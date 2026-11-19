@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { toSafeError } from "../security/errors";
-import type { RateLimiter } from "../security/rate-limit";
+import type { z } from "zod";
+import { HTTP_STATUS, toSafeError } from "../security";
+import { apiRateLimiter, type RateLimiter } from "../security";
 
 /** Extracts the client IP address from the x-forwarded-for header or defaults to localhost. */
 export function getClientIp(request: Request): string {
@@ -16,7 +17,7 @@ export function enforceRateLimit(limiter: RateLimiter, ip: string): Response | n
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },
       {
-        status: 429,
+        status: HTTP_STATUS.TOO_MANY_REQUESTS,
         headers: { "Retry-After": String(check.retryAfter) },
       },
     );
@@ -34,19 +35,20 @@ export async function readJsonBody<T = unknown>(
 
   const contentLength = request.headers.get("content-length");
   if (contentLength && parseInt(contentLength, 10) > maxBytes) {
-    return NextResponse.json({ error: tooLargeMsg }, { status: 413 });
+    return NextResponse.json({ error: tooLargeMsg }, { status: HTTP_STATUS.PAYLOAD_TOO_LARGE });
   }
 
   const rawText = await request.text();
   if (new TextEncoder().encode(rawText).length > maxBytes) {
-    return NextResponse.json({ error: tooLargeMsg }, { status: 413 });
+    return NextResponse.json({ error: tooLargeMsg }, { status: HTTP_STATUS.PAYLOAD_TOO_LARGE });
   }
 
   try {
+    // The route validates the body with its schema straight after; T is that schema's input type.
     const data = JSON.parse(rawText) as T;
     return { data };
   } catch {
-    return NextResponse.json({ error: "Malformed JSON payload." }, { status: 400 });
+    return NextResponse.json({ error: "Malformed JSON payload." }, { status: HTTP_STATUS.BAD_REQUEST });
   }
 }
 
@@ -54,4 +56,31 @@ export async function readJsonBody<T = unknown>(
 export function jsonError(err: unknown): Response {
   const safeError = toSafeError(err);
   return NextResponse.json({ error: safeError.message }, { status: safeError.status });
+}
+
+/** What a route declares about its request; the shared guard sequence does the rest. */
+interface GuardedRequestOptions<Schema extends z.ZodType> {
+  schema: Schema;
+  maxBytes: number;
+  /** Shown to the client when the body is well-formed JSON but fails the schema. */
+  invalidMessage: string;
+}
+
+/**
+ * Runs the guard sequence every API route needs, in this order: rate limit, size-limited JSON read,
+ * schema validation. Returns the parsed data, or the Response to send back unchanged.
+ */
+export async function parseGuardedRequest<Schema extends z.ZodType>(
+  request: Request,
+  { schema, maxBytes, invalidMessage }: GuardedRequestOptions<Schema>,
+): Promise<{ data: z.output<Schema> } | Response> {
+  const limited = enforceRateLimit(apiRateLimiter, getClientIp(request));
+  if (limited) return limited;
+
+  const body = await readJsonBody(request, maxBytes);
+  if (body instanceof Response) return body;
+
+  const parsed = schema.safeParse(body.data);
+  if (!parsed.success) return NextResponse.json({ error: invalidMessage }, { status: HTTP_STATUS.BAD_REQUEST });
+  return { data: parsed.data };
 }

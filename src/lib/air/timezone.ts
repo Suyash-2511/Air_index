@@ -1,5 +1,5 @@
 /** Mapping of ISO 3166-1 alpha-2 region codes to representative IANA time zones. */
-export const REGION_TIMEZONES: Readonly<Record<string, string>> = {
+const REGION_TIMEZONES: Readonly<Record<string, string>> = {
   in: "Asia/Kolkata",
   us: "America/New_York",
   gb: "Europe/London",
@@ -9,7 +9,7 @@ export const REGION_TIMEZONES: Readonly<Record<string, string>> = {
 };
 
 /** Result of mapping a timestamp to its local clock hour. */
-export interface LocalHourResolution {
+interface LocalHourResolution {
   hour: number;
   timeZone: string;
   isFallback: boolean;

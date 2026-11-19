@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { enforceRateLimit, getClientIp, jsonError } from "@/lib/http/route-helpers";
-import { fetchPlaceDetails } from "@/lib/places/autocomplete";
-import { apiRateLimiter } from "@/lib/security/rate-limit";
+import { enforceRateLimit, getClientIp, jsonError } from "@/lib/http";
+import { fetchPlaceDetails } from "@/lib/places";
+import { apiRateLimiter, HTTP_STATUS } from "@/lib/security";
 
 interface RouteParams {
   params: Promise<{
@@ -18,7 +18,7 @@ export async function GET(request: Request, { params }: RouteParams): Promise<Re
   try {
     const { id } = await params;
     if (!id || id.trim().length === 0) {
-      return NextResponse.json({ error: "Missing place identifier." }, { status: 400 });
+      return NextResponse.json({ error: "Missing place identifier." }, { status: HTTP_STATUS.BAD_REQUEST });
     }
 
     const { searchParams } = new URL(request.url);

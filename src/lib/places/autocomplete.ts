@@ -1,24 +1,11 @@
 import { z } from "zod";
 import { getGoogleMapsApiKey, hasAirKey } from "../env";
-import { googleJson } from "../google/http";
-import { AppError } from "../security/errors";
+import { googleJson } from "../google";
+import { AppError, HTTP_STATUS } from "../security";
 import { getFixturePlaceDetails, getFixturePredictions } from "./fixtures";
+import type { AutocompletePrediction, PlaceDetails } from "./types";
 
-/** Autocomplete suggestion prediction returned to clients. */
-export interface AutocompletePrediction {
-  placeId: string;
-  primaryText: string;
-  secondaryText: string;
-}
-
-/** Complete geographical details for a selected place. */
-export interface PlaceDetails {
-  placeId: string;
-  label: string;
-  lat: number;
-  lng: number;
-  formattedAddress: string;
-}
+export type { AutocompletePrediction, PlaceDetails };
 
 /** Explicit field mask restricting Google Places API (New) billing to basic fields. */
 export const PLACE_DETAILS_FIELD_MASK = "location,displayName,formattedAddress";
@@ -59,43 +46,62 @@ const placeDetailsResponseSchema = z.object({
     .optional(),
 });
 
+type PlacePrediction = NonNullable<NonNullable<z.infer<typeof autocompleteResponseSchema>["suggestions"]>[number]["placePrediction"]>;
+type PlaceDetailsResponse = z.infer<typeof placeDetailsResponseSchema>;
+
+/** Shortest and longest search text worth sending; below the minimum nothing useful can match. */
+const MIN_QUERY_LENGTH = 2;
+const MAX_QUERY_LENGTH = 100;
+/** Place ids the fixtures hand out, so the demo never calls Google for them. */
+const FIXTURE_ID_PREFIX = "fixture-";
+
+/** Google names the place as "places/<id>" in one field and as a bare id in another; clients get the bare id. */
+function placeIdOf(prediction: PlacePrediction): string {
+  return prediction.placeId ?? (prediction.place ? prediction.place.replace(/^places\//, "") : "");
+}
+
+function toPrediction(prediction: PlacePrediction): AutocompletePrediction {
+  return {
+    placeId: placeIdOf(prediction),
+    primaryText: prediction.structuredFormat?.mainText?.text ?? prediction.text?.text ?? "",
+    secondaryText: prediction.structuredFormat?.secondaryText?.text ?? "",
+  };
+}
+
 /**
  * Searches location suggestions using Google Places API (New) with session token optimization.
  * Constrained strictly to India (`includedRegionCodes: ["in"]`).
  */
 export async function fetchAutocomplete(input: string, sessionToken?: string): Promise<AutocompletePrediction[]> {
   const trimmed = input.trim();
-  if (trimmed.length < 2 || trimmed.length > 100) {
-    throw new AppError(400, "Search query must be between 2 and 100 characters.");
-  }
-
-  if (!hasAirKey()) {
-    return getFixturePredictions(trimmed);
+  if (trimmed.length < MIN_QUERY_LENGTH || trimmed.length > MAX_QUERY_LENGTH) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, "Search query must be between 2 and 100 characters.");
   }
 
   const key = getGoogleMapsApiKey();
-  if (!key) return getFixturePredictions(trimmed);
+  if (!hasAirKey() || !key) return getFixturePredictions(trimmed);
 
-  const payload: Record<string, unknown> = {
-    input: trimmed,
-    includedRegionCodes: ["in"],
-  };
+  const payload: Record<string, unknown> = { input: trimmed, includedRegionCodes: ["in"] };
   if (sessionToken) payload.sessionToken = sessionToken;
 
   const raw = await googleJson(`${placesApiBaseUrl}:autocomplete`, key, { body: payload });
-  const parsed = autocompleteResponseSchema.parse(raw);
-  const suggestions = parsed.suggestions ?? [];
+  const suggestions = autocompleteResponseSchema.parse(raw).suggestions ?? [];
 
   return suggestions
-    .map((s) => s.placePrediction)
-    .filter((p): p is NonNullable<typeof p> => p !== undefined)
-    .map((p) => {
-      const placeId = p.placeId ?? (p.place ? p.place.replace(/^places\//, "") : "");
-      const primaryText = p.structuredFormat?.mainText?.text ?? p.text?.text ?? "";
-      const secondaryText = p.structuredFormat?.secondaryText?.text ?? "";
-      return { placeId, primaryText, secondaryText };
-    })
-    .filter((p) => p.placeId.length > 0);
+    .flatMap((suggestion) => (suggestion.placePrediction ? [toPrediction(suggestion.placePrediction)] : []))
+    .filter((prediction) => prediction.placeId.length > 0);
+}
+
+/** Shapes Google's place response, naming the place by its display name, then address, then a default. */
+function toPlaceDetails(response: PlaceDetailsResponse, requestedId: string): PlaceDetails {
+  const label = response.displayName?.text ?? response.formattedAddress ?? "Selected Location";
+  return {
+    placeId: response.id ?? requestedId,
+    label,
+    lat: response.location?.latitude ?? 0,
+    lng: response.location?.longitude ?? 0,
+    formattedAddress: response.formattedAddress ?? label,
+  };
 }
 
 /**
@@ -104,32 +110,14 @@ export async function fetchAutocomplete(input: string, sessionToken?: string): P
  */
 export async function fetchPlaceDetails(placeId: string, sessionToken?: string): Promise<PlaceDetails> {
   const trimmedId = placeId.trim();
-  if (!trimmedId) {
-    throw new AppError(400, "Place ID is required.");
-  }
-
-  if (!hasAirKey() || trimmedId.startsWith("fixture-")) {
-    return getFixturePlaceDetails(trimmedId);
-  }
+  if (!trimmedId) throw new AppError(HTTP_STATUS.BAD_REQUEST, "Place ID is required.");
 
   const key = getGoogleMapsApiKey();
-  if (!key) return getFixturePlaceDetails(trimmedId);
+  if (!hasAirKey() || trimmedId.startsWith(FIXTURE_ID_PREFIX) || !key) return getFixturePlaceDetails(trimmedId);
 
   const tokenParam = sessionToken ? `?sessionToken=${encodeURIComponent(sessionToken)}` : "";
-  const url = `${placesApiBaseUrl}/${encodeURIComponent(trimmedId)}${tokenParam}`;
-
-  const raw = await googleJson(url, key, {
+  const raw = await googleJson(`${placesApiBaseUrl}/${encodeURIComponent(trimmedId)}${tokenParam}`, key, {
     headers: { "X-Goog-FieldMask": PLACE_DETAILS_FIELD_MASK },
   });
-
-  const parsed = placeDetailsResponseSchema.parse(raw);
-  const label = parsed.displayName?.text ?? parsed.formattedAddress ?? "Selected Location";
-
-  return {
-    placeId: parsed.id ?? trimmedId,
-    label,
-    lat: parsed.location?.latitude ?? 0,
-    lng: parsed.location?.longitude ?? 0,
-    formattedAddress: parsed.formattedAddress ?? label,
-  };
+  return toPlaceDetails(placeDetailsResponseSchema.parse(raw), trimmedId);
 }

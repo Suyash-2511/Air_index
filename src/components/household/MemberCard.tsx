@@ -1,33 +1,106 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import { validateSchedule } from "@/lib/exposure/schedule";
-import { useLocale } from "@/hooks/useLocale";
-import {
-  AGE_BANDS,
-  SENSITIVITIES,
-  type ActivityWindow,
-  type AgeBand,
-  type HouseholdMember,
-  type Sensitivity,
-} from "@/lib/types";
-import { getAgeBandLabel, getSensitivityLabel, formatDuration } from "@/components/labels";
-import { RoutineBlock } from "./RoutineBlock";
+import { useLocale } from "@/hooks";
+import { validateSchedule } from "@/lib/exposure";
+import { formatDuration } from "@/lib/format";
+import { getAgeBandLabel, getSensitivityLabel } from "@/lib/labels";
+import { HOURS_PER_DAY, MINUTES_PER_DAY, MINUTES_PER_HOUR } from "@/lib/time-units";
+import { AGE_BANDS, SENSITIVITIES, type ActivityWindow, type HouseholdMember, type Sensitivity } from "@/lib/types";
+import { Select } from "../ui";
+import { cssVars } from "../ui";
 import styles from "./MemberCard.module.css";
+import { RoutineBlock } from "./RoutineBlock";
 
 /** Props for the MemberCard editing component. */
-export interface MemberCardProps {
+interface MemberCardProps {
   member: HouseholdMember;
   onUpdate: (updated: HouseholdMember) => void;
   onRemove?: () => void;
   canRemove: boolean;
 }
 
+/** A new block starts at 6 PM when the day has no blocks yet, the usual end of a working day. */
+const DEFAULT_NEW_BLOCK_START_HOUR = 18;
+const NEW_BLOCK_MINUTES = 60;
+
 /** Starts a new block where the person's last block ends. */
 function nextBlock(windows: readonly ActivityWindow[]): ActivityWindow {
   const last = windows[windows.length - 1];
-  const end = last ? (last.startHour * 60 + last.durationMinutes) / 60 : 18;
-  return { activity: "rest_indoor", setting: "indoor", startHour: Math.floor(end) % 24, durationMinutes: 60, room: "living", mask: false };
+  const endHour = last ? (last.startHour * MINUTES_PER_HOUR + last.durationMinutes) / MINUTES_PER_HOUR : DEFAULT_NEW_BLOCK_START_HOUR;
+  return {
+    activity: "rest_indoor",
+    setting: "indoor",
+    startHour: Math.floor(endHour) % HOURS_PER_DAY,
+    durationMinutes: NEW_BLOCK_MINUTES,
+    room: "living",
+    mask: false,
+  };
+}
+
+/** Name and age group of the person. */
+function MemberDetails({ member, onUpdate }: Pick<MemberCardProps, "member" | "onUpdate">) {
+  const { locale, t } = useLocale();
+  const ageOptions = AGE_BANDS.map((band) => ({ value: band, label: getAgeBandLabel(band, locale) }));
+  return (
+    <div className={styles.metaGrid}>
+      <label className={styles.field}>
+        <span className={styles.label}>{t("member_name_label")}</span>
+        <input type="text" value={member.label} onChange={(event) => onUpdate({ ...member, label: event.target.value })} className={styles.input} />
+      </label>
+      <label className={styles.field}>
+        <span className={styles.label}>{t("member_age_label")}</span>
+        <Select value={member.ageBand} options={ageOptions} onChange={(ageBand) => onUpdate({ ...member, ageBand })} className={styles.input} />
+      </label>
+    </div>
+  );
+}
+
+/** Health conditions that raise the person's sensitivity to smoke. */
+function ConditionChips({ member, onUpdate }: Pick<MemberCardProps, "member" | "onUpdate">) {
+  const { locale, t } = useLocale();
+  const toggle = (sensitivity: Sensitivity) => {
+    const has = member.sensitivities.includes(sensitivity);
+    onUpdate({ ...member, sensitivities: has ? member.sensitivities.filter((other) => other !== sensitivity) : [...member.sensitivities, sensitivity] });
+  };
+  return (
+    <fieldset className={styles.fieldset}>
+      <legend className={styles.label}>{t("member_conditions_label")}</legend>
+      <div className={styles.chips}>
+        {SENSITIVITIES.map((sensitivity) => (
+          <label key={sensitivity} className={styles.chip}>
+            <input type="checkbox" checked={member.sensitivities.includes(sensitivity)} onChange={() => toggle(sensitivity)} />
+            <span>{getSensitivityLabel(sensitivity, locale)}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/** How much of the 24 hours the blocks cover, as a bar and a label. */
+function PlannedProgress({ totalMinutes }: { totalMinutes: number }) {
+  const { t } = useLocale();
+  const plannedFraction = Math.min(1, totalMinutes / MINUTES_PER_DAY);
+  return (
+    <>
+      <div className={styles.dayHead}>
+        <span className={styles.label}>{t("member_typical_day")}</span>
+        <span className={styles.planned} data-complete={totalMinutes === MINUTES_PER_DAY}>
+          {t("member_planned_duration", { duration: formatDuration(totalMinutes) })}
+        </span>
+      </div>
+      <div
+        className={styles.progress}
+        role="progressbar"
+        aria-label={t("member_progress_aria")}
+        aria-valuemin={0}
+        aria-valuemax={HOURS_PER_DAY}
+        aria-valuenow={Math.round(totalMinutes / MINUTES_PER_HOUR)}
+      >
+        <span style={cssVars({ "--scale": plannedFraction })} />
+      </div>
+    </>
+  );
 }
 
 /**
@@ -37,21 +110,15 @@ function nextBlock(windows: readonly ActivityWindow[]): ActivityWindow {
 export function MemberCard({ member, onUpdate, onRemove, canRemove }: MemberCardProps) {
   const { locale, t } = useLocale();
   const problems = validateSchedule(member.windows, locale);
-  const totalMinutes = member.windows.reduce((sum, w) => sum + w.durationMinutes, 0);
-  const plannedPct = Math.min(100, (totalMinutes / 1440) * 100);
-  const sortedIdx = member.windows.map((w, i) => ({ w, i })).sort((a, b) => a.w.startHour - b.w.startHour);
+  const totalMinutes = member.windows.reduce((sum, block) => sum + block.durationMinutes, 0);
+  // Blocks are listed by start time, but edits address them by their position in the stored list.
+  const byStart = member.windows.map((block, index) => ({ block, index })).sort((a, b) => a.block.startHour - b.block.startHour);
+  const canDeleteBlock = member.windows.length > 1;
 
-  const toggleSensitivity = (s: Sensitivity) => {
-    const has = member.sensitivities.includes(s);
-    onUpdate({ ...member, sensitivities: has ? member.sensitivities.filter((x) => x !== s) : [...member.sensitivities, s] });
-  };
-
-  const updateWindow = (index: number, partial: Partial<ActivityWindow>) => {
-    onUpdate({ ...member, windows: member.windows.map((w, i) => (i === index ? { ...w, ...partial } : w)) });
-  };
-
-  const removeWindow = (index: number) => {
-    if (member.windows.length > 1) onUpdate({ ...member, windows: member.windows.filter((_, i) => i !== index) });
+  const updateBlock = (index: number, partial: Partial<ActivityWindow>) =>
+    onUpdate({ ...member, windows: member.windows.map((block, i) => (i === index ? { ...block, ...partial } : block)) });
+  const removeBlock = (index: number) => {
+    if (canDeleteBlock) onUpdate({ ...member, windows: member.windows.filter((_, i) => i !== index) });
   };
 
   return (
@@ -65,58 +132,21 @@ export function MemberCard({ member, onUpdate, onRemove, canRemove }: MemberCard
         )}
       </header>
 
-      <div className={styles.metaGrid}>
-        <label className={styles.field}>
-          <span className={styles.label}>{t("member_name_label")}</span>
-          <input type="text" value={member.label} onChange={(e) => onUpdate({ ...member, label: e.target.value })} className={styles.input} />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.label}>{t("member_age_label")}</span>
-          <select value={member.ageBand} onChange={(e) => onUpdate({ ...member, ageBand: e.target.value as AgeBand })} className={styles.input}>
-            {AGE_BANDS.map((b) => <option key={b} value={b}>{getAgeBandLabel(b, locale)}</option>)}
-          </select>
-        </label>
-      </div>
-
-      <fieldset className={styles.fieldset}>
-        <legend className={styles.label}>{t("member_conditions_label")}</legend>
-        <div className={styles.chips}>
-          {SENSITIVITIES.map((s) => (
-            <label key={s} className={styles.chip}>
-              <input type="checkbox" checked={member.sensitivities.includes(s)} onChange={() => toggleSensitivity(s)} />
-              <span>{getSensitivityLabel(s, locale)}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <MemberDetails member={member} onUpdate={onUpdate} />
+      <ConditionChips member={member} onUpdate={onUpdate} />
 
       <section className={styles.day} aria-label={t("member_day_aria", { name: member.label })}>
-        <div className={styles.dayHead}>
-          <span className={styles.label}>{t("member_typical_day")}</span>
-          <span className={styles.planned} data-complete={totalMinutes === 1440}>
-            {t("member_planned_duration", { duration: formatDuration(totalMinutes) })}
-          </span>
-        </div>
-        <div
-          className={styles.progress}
-          role="progressbar"
-          aria-label={t("member_progress_aria")}
-          aria-valuemin={0}
-          aria-valuemax={24}
-          aria-valuenow={Math.round(totalMinutes / 60)}
-        >
-          <span style={{ "--scale": plannedPct / 100 } as CSSProperties} />
-        </div>
+        <PlannedProgress totalMinutes={totalMinutes} />
 
         <ol className={styles.blocks}>
-          {sortedIdx.map(({ w, i }) => (
+          {byStart.map(({ block, index }) => (
             <RoutineBlock
-              key={i}
-              index={i}
-              window={w}
-              canDelete={member.windows.length > 1}
-              onChange={(partial) => updateWindow(i, partial)}
-              onDelete={() => removeWindow(i)}
+              key={index}
+              index={index}
+              window={block}
+              canDelete={canDeleteBlock}
+              onChange={(partial) => updateBlock(index, partial)}
+              onDelete={() => removeBlock(index)}
             />
           ))}
         </ol>

@@ -1,12 +1,6 @@
 .container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-24);
-  padding: var(--space-24);
-  background-color: var(--surface);
-  border: 1px solid var(--rule);
-  border-top: 2px solid var(--ink);
-  border-radius: var(--radius-sm);
+  composes: panel from "../../styles/section-card.module.css";
+  --panel-gap: var(--space-24);
 }
 
 .title {

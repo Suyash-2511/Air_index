@@ -1,6 +1,7 @@
-import type { DoseBreakdown, HourlyAir, Household } from "@/lib/types";
+import type { z } from "zod";
+import type { askApiResponseSchema, intakeApiResponseSchema, planApiResponseSchema, rankedActionSchema } from "./schemas";
 
-/** Autocomplete suggestion returned by the Places API. */
+/** Autocomplete suggestion returned by the Places API, named for the combobox that shows it. */
 export interface PlaceSuggestion {
   placeId: string;
   mainText: string;
@@ -8,48 +9,13 @@ export interface PlaceSuggestion {
 }
 
 /** Ranked change action with model-generated or demo plain-language explanation. */
-export interface RankedAction {
-  id: string;
-  kind: "routine" | "indoor_air" | "protection" | "sustainable";
-  effort: "free" | "low_cost" | "investment";
-  reducesOwnEmissions: boolean;
-  savedMicrograms: number;
-  savedPercent: number;
-  priorityScore: number;
-  beneficiaries: readonly {
-    memberId: string;
-    savedMicrograms: number;
-    savedPercent: number;
-  }[];
-  explanation?: {
-    title: string;
-    whyItHelps: string;
-    steps: readonly string[];
-    sustainableAlternative?: string | undefined;
-  } | undefined;
-}
+export type RankedAction = z.infer<typeof rankedActionSchema>;
 
 /** Complete plan API response returned by /api/plan. */
-export interface PlanApiResponse {
-  baselineTotal: number;
-  baseline: readonly DoseBreakdown[];
-  ranked: readonly RankedAction[];
-  air: {
-    current: HourlyAir;
-    forecast: readonly HourlyAir[];
-  };
-  demoMode: boolean;
-}
+export type PlanApiResponse = z.infer<typeof planApiResponseSchema>;
 
 /** Intake API response returned by /api/intake. */
-export interface IntakeApiResponse {
-  household: Household;
-  assumed: readonly string[];
-}
+export type IntakeApiResponse = z.infer<typeof intakeApiResponseSchema>;
 
 /** Ask API response returned by /api/ask. */
-export interface AskApiResponse {
-  answer: string;
-  answerable: boolean;
-  citations: readonly string[];
-}
+export type AskApiResponse = z.infer<typeof askApiResponseSchema>;

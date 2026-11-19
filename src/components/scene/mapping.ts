@@ -4,16 +4,16 @@
  */
 
 /** Spherical cartesian coordinates on a 3D globe [x, y, z]. */
-export type SphereCoords = [number, number, number];
+type SphereCoords = [number, number, number];
 
 /** Target Euler rotation angles [pitch, yaw] in radians. */
-export interface GlobeRotation {
+interface GlobeRotation {
   pitch: number;
   yaw: number;
 }
 
 /** RGB color triplet with 0-1 values. */
-export interface RgbColor {
+interface RgbColor {
   r: number;
   g: number;
   b: number;

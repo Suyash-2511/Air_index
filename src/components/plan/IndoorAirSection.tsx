@@ -1,12 +1,12 @@
 "use client";
 
-import { useLocale } from "@/hooks/useLocale";
-import { IndoorHacks } from "../indoor/IndoorHacks";
-import { PurifierCalculator } from "../indoor/PurifierCalculator";
+import { useLocale } from "@/hooks";
+import { IndoorHacks } from "../indoor";
+import { PurifierCalculator } from "../indoor";
 import styles from "./IndoorAirSection.module.css";
 
 /** Props for the IndoorAirSection component. */
-export interface IndoorAirSectionProps {
+interface IndoorAirSectionProps {
   outdoorPm25: number;
 }
 

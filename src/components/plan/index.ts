@@ -1,10 +1,9 @@
-export { AirToday, type AirTodayProps } from "./AirToday";
-export { AreaMap, type AreaMapProps } from "./AreaMap";
-export { AskPanel, type AskPanelProps } from "./AskPanel";
-export { ChangeCard, type ChangeCardProps } from "./ChangeCard";
-export { DayStrip, type DayStripProps } from "./DayStrip";
+export { AirToday } from "./AirToday";
+export { AreaMap } from "./AreaMap";
+export { AskPanel } from "./AskPanel";
+export { ChangeCard } from "./ChangeCard";
+export { DayStrip } from "./DayStrip";
+export { IndoorAirSection } from "./IndoorAirSection";
 export { InversionExplainer } from "./InversionExplainer";
-export { IndoorAirSection, type IndoorAirSectionProps } from "./IndoorAirSection";
-export { PlanActions, type PlanActionsProps } from "./PlanActions";
-export { RoutineTimeline, type RoutineTimelineProps } from "./RoutineTimeline";
-export { INTERVENTION_TITLES, getInterventionTitle } from "./plan-sharing";
+export { PlanActions } from "./PlanActions";
+export { RoutineTimeline } from "./RoutineTimeline";

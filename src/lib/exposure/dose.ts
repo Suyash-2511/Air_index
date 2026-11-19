@@ -1,9 +1,7 @@
 import type { Activity, ActivityWindow, DayForecast, DoseBreakdown, HomeSetup, Household, HouseholdMember } from "../types";
 import { breathingRateM3PerHour } from "./breathing-rates";
+import { HOURS_PER_DAY, MINUTES_PER_HOUR } from "../time-units";
 import { concentrationFor } from "./infiltration";
-
-const HOURS_PER_DAY = 24;
-const MINUTES_PER_HOUR = 60;
 
 /**
  * Splits a window into the minutes it spends in each clock hour, wrapping past

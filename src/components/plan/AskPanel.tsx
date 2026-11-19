@@ -1,15 +1,35 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { askPlanQuestion } from "@/client/api";
 import type { AskApiResponse } from "@/client/types";
-import { useLocale } from "@/hooks/useLocale";
+import { useAskQuestion } from "@/hooks";
+import { useLocale } from "@/hooks";
 import type { Household } from "@/lib/types";
 import styles from "./AskPanel.module.css";
 
 /** Props for the AskPanel assistant component. */
-export interface AskPanelProps {
+interface AskPanelProps {
   household: Household;
+}
+
+/** The answer with the question it answers and the plan changes it cites. */
+function AnswerBox({ answer, asked }: { answer: AskApiResponse; asked: string | undefined }) {
+  const { t } = useLocale();
+  return (
+    <div className={styles.answerBox} aria-live="polite">
+      {asked && <p className={styles.asked}>{t("ask_you_asked", { q: asked })}</p>}
+      <p>{answer.answer}</p>
+      {answer.citations.length > 0 && (
+        <div className={styles.citations}>
+          <span>{t("ask_cited_actions")}</span>
+          {answer.citations.map((citation) => (
+            <span key={citation} className={styles.citationTag}>
+              {citation}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -18,85 +38,40 @@ export interface AskPanelProps {
  * while maintaining a permanent medical disclaimer.
  */
 export function AskPanel({ household }: AskPanelProps) {
-  const { locale, t } = useLocale();
-  const [question, setQuestion] = useState("");
-  const [result, setResult] = useState<AskApiResponse | undefined>();
-  const [asked, setAsked] = useState<string | undefined>();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>();
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!question.trim()) return;
-
-    setLoading(true);
-    setError(undefined);
-    try {
-      const q = question.trim();
-      const resp = await askPlanQuestion(q, household, locale);
-      setResult(resp);
-      setAsked(q);
-      setQuestion("");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to answer question");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { t } = useLocale();
+  const ask = useAskQuestion(household);
 
   return (
     <section className={styles.panel} aria-labelledby="ask-panel-title">
       <h3 id="ask-panel-title" className={styles.title}>
         {t("ask_title")}
       </h3>
-      <p className={styles.description}>
-        {t("ask_subtitle")}
-      </p>
+      <p className={styles.description}>{t("ask_subtitle")}</p>
 
-      <form onSubmit={handleSubmit} className={styles.form}>
+      <form onSubmit={ask.submit} className={styles.form}>
         <label htmlFor="ask-input" className="sr-only">
           {t("ask_input_aria")}
         </label>
         <input
           id="ask-input"
           type="text"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder={result ? t("ask_placeholder_again") : t("ask_placeholder_default")}
-          disabled={loading}
+          value={ask.question}
+          onChange={(event) => ask.setQuestion(event.target.value)}
+          placeholder={ask.answer ? t("ask_placeholder_again") : t("ask_placeholder_default")}
+          disabled={ask.isLoading}
           className={styles.input}
         />
-        <button
-          type="submit"
-          disabled={loading || !question.trim()}
-          className={styles.button}
-        >
-          {loading ? t("ask_btn_loading") : t("ask_btn")}
+        <button type="submit" disabled={ask.isLoading || !ask.question.trim()} className={styles.button}>
+          {ask.isLoading ? t("ask_btn_loading") : t("ask_btn")}
         </button>
       </form>
 
-      {error && (
+      {ask.error && (
         <div className={styles.answerBox} role="alert">
-          {error}
+          {ask.error}
         </div>
       )}
-
-      {result && (
-        <div className={styles.answerBox} aria-live="polite">
-          {asked && <p className={styles.asked}>{t("ask_you_asked", { q: asked })}</p>}
-          <p>{result.answer}</p>
-          {result.citations.length > 0 && (
-            <div className={styles.citations}>
-              <span>{t("ask_cited_actions")}</span>
-              {result.citations.map((cite, idx) => (
-                <span key={idx} className={styles.citationTag}>
-                  {cite}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {ask.answer && <AnswerBox answer={ask.answer} asked={ask.asked} />}
 
       <footer className={styles.disclaimer}>
         <strong>{t("ask_disclaimer_title")}</strong> {t("ask_disclaimer_body")}

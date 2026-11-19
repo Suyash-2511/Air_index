@@ -5,14 +5,14 @@ import { fetchReverseGeocode } from "@/client/api";
 import type { Location } from "@/lib/types";
 
 /** Options for configuring browser geolocation tracking. */
-export interface UseBrowserLocationOptions {
+interface UseBrowserLocationOptions {
   initialLocation?: Location | undefined;
   onLocationResolved: (location: Location) => void;
   onError?: (message: string) => void;
 }
 
 /** Return signature for the browser location hook. */
-export interface UseBrowserLocationReturn {
+interface UseBrowserLocationReturn {
   locate: (silent: boolean) => void;
   geoLoading: boolean;
 }

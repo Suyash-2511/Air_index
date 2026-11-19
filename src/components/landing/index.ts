@@ -1,3 +1,3 @@
-export { LandingHero, type LandingHeroProps } from "./LandingHero";
-export { Masthead, type MastheadProps } from "./Masthead";
-export { StationReading, type StationReadingProps } from "./StationReading";
+export { LandingHero } from "./LandingHero";
+export { Masthead } from "./Masthead";
+export { StationReading } from "./StationReading";

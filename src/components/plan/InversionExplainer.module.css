@@ -1,11 +1,6 @@
 .card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
-  padding: var(--space-16);
-  border-radius: var(--radius-card);
-  border: 1px solid var(--rule);
-  background-color: var(--sky-1);
+  composes: card from "../../styles/section-card.module.css";
+  --section-card-padding: var(--space-16);
 }
 
 .card:target {
@@ -14,17 +9,11 @@
 }
 
 .header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  composes: header from "../../styles/section-card.module.css";
 }
 
 .title {
-  font-family: var(--font-display);
-  font-size: var(--text-h3);
-  font-weight: 400;
-  color: var(--ink);
-  letter-spacing: -0.01em;
+  composes: title from "../../styles/section-card.module.css";
 }
 
 .description {

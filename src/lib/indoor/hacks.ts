@@ -4,10 +4,10 @@ import type { TranslationKey } from "../i18n";
 export type HackCost = "Free" | "Under ₹500" | "Under ₹3,000";
 
 /** Effort required to implement the action. */
-export type HackEffort = "minimal" | "low" | "medium";
+type HackEffort = "minimal" | "low" | "medium";
 
 /** Practical indoor air mitigation tip or myth-busting card. */
-export interface IndoorHack {
+interface IndoorHack {
   id: string;
   title: string;
   costTag: HackCost;

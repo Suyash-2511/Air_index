@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { geocodeCache, hashGeocodeKey } from "@/lib/cache";
-import { enforceRateLimit, getClientIp, jsonError, readJsonBody } from "@/lib/http/route-helpers";
-import { reverseGeocode } from "@/lib/places/geocode";
-import { apiRateLimiter } from "@/lib/security/rate-limit";
+import { jsonError, parseGuardedRequest } from "@/lib/http";
+import { reverseGeocode } from "@/lib/places";
 
 const MAX_BODY_BYTES = 2048;
 
@@ -14,23 +13,15 @@ const geocodeRequestSchema = z.object({
 
 /** Reverse geocoding endpoint returning friendly locality/city labels. */
 export async function POST(request: Request): Promise<Response> {
-  const ip = getClientIp(request);
-  const rateLimitResponse = enforceRateLimit(apiRateLimiter, ip);
-  if (rateLimitResponse) return rateLimitResponse;
-
-  const bodyResult = await readJsonBody(request, MAX_BODY_BYTES);
-  if (bodyResult instanceof Response) return bodyResult;
-
-  const parseResult = geocodeRequestSchema.safeParse(bodyResult.data);
-  if (!parseResult.success) {
-    return NextResponse.json(
-      { error: "Invalid coordinates. Latitude must be -90 to 90 and longitude -180 to 180." },
-      { status: 400 },
-    );
-  }
+  const guarded = await parseGuardedRequest(request, {
+    schema: geocodeRequestSchema,
+    maxBytes: MAX_BODY_BYTES,
+    invalidMessage: "Invalid coordinates. Latitude must be -90 to 90 and longitude -180 to 180.",
+  });
+  if (guarded instanceof Response) return guarded;
 
   try {
-    const { lat, lng } = parseResult.data;
+    const { lat, lng } = guarded.data;
     const cacheKey = hashGeocodeKey(lat, lng);
     const cached = geocodeCache.get(cacheKey);
     if (cached) return NextResponse.json({ location: cached }, { status: 200 });

@@ -1,7 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 import { getGeminiApiKey, hasGeminiKey, isDemoMode } from "../env";
-import { AppError } from "../security/errors";
+import { AppError, HTTP_STATUS } from "../security";
+import { MILLISECONDS_PER_SECOND } from "../time-units";
 
 /**
  * Default Flash-Lite model name, confirmed live from models list and env-overridable.
@@ -40,17 +41,111 @@ export interface GenerateStructuredOptions<T> {
   maxRetries?: number;
 }
 
+/** How long one Gemini call may take before it is abandoned. */
+const DEFAULT_TIMEOUT_MS = 25_000;
+/** Retries after the first attempt, for rate limits and server errors only. */
+const DEFAULT_MAX_RETRIES = 2;
+/** Wait before the first retry; it doubles each time. */
+const INITIAL_BACKOFF_MS = 500;
+
+/** Longest slice of an error message written to the server log, so a long upstream message cannot flood it. */
+const LOGGED_MESSAGE_LENGTH = 200;
+
+/** Fragments of upstream error text that mean "try again": rate limits and server-side failures. */
+const RETRYABLE_ERROR_MARKERS = ["429", "RESOURCE_EXHAUSTED", "500", "503", "UNAVAILABLE", "INTERNAL"];
+
 function isRetryableGeminiError(err: unknown): boolean {
   if (!err) return false;
-  const msg = err instanceof Error ? err.message : String(err);
-  return (
-    msg.includes("429") ||
-    msg.includes("RESOURCE_EXHAUSTED") ||
-    msg.includes("500") ||
-    msg.includes("503") ||
-    msg.includes("UNAVAILABLE") ||
-    msg.includes("INTERNAL")
+  const message = err instanceof Error ? err.message : String(err);
+  return RETRYABLE_ERROR_MARKERS.some((marker) => message.includes(marker));
+}
+
+/** Failures that retrying cannot fix: a timeout, or output that is structurally wrong. */
+function isTerminalError(err: unknown): boolean {
+  if (!(err instanceof AppError)) return false;
+  const isBadOutput = err.status === 502 && (err.message.includes("schema") || err.message.includes("valid JSON"));
+  return err.status === 504 || isBadOutput;
+}
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Races a model call against a timer so a hung request fails instead of waiting forever. */
+async function callWithTimeout<R>(call: Promise<R>, timeoutMs: number): Promise<R> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new AppError(HTTP_STATUS.GATEWAY_TIMEOUT, `Gemini request timed out after ${timeoutMs / MILLISECONDS_PER_SECOND}s.`));
+    }, timeoutMs);
+  });
+  return Promise.race([call, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+/** Parses and validates the model's text; each failure is a distinct, client-safe 502. */
+function parseModelText<T>(text: string | undefined, schema: z.ZodType<T>): T {
+  if (!text || text.trim().length === 0) throw new AppError(HTTP_STATUS.BAD_GATEWAY, "Gemini returned an empty response.");
+
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new AppError(HTTP_STATUS.BAD_GATEWAY, "Gemini output is not valid JSON.");
+  }
+
+  const validated = schema.safeParse(json);
+  if (!validated.success) throw new AppError(HTTP_STATUS.BAD_GATEWAY, "Gemini output failed schema validation.");
+  return validated.data;
+}
+
+/** Demo mode and a missing key both serve the deterministic fixture, or fail clearly when there is none. */
+function fixtureOrThrow<T>(options: GenerateStructuredOptions<T>, missingFixtureMessage: string): T {
+  if (options.demoFixture) return options.zodSchema.parse(options.demoFixture());
+  throw new AppError(HTTP_STATUS.INTERNAL_ERROR, missingFixtureMessage);
+}
+
+/** One model call, validated; the scope disclaimer is appended to every system instruction. */
+async function generateOnce<T>(ai: GoogleGenAI, options: GenerateStructuredOptions<T>, timeoutMs: number): Promise<T> {
+  geminiMetrics.calls += 1;
+  const response = await callWithTimeout(
+    ai.models.generateContent({
+      model: options.model ?? DEFAULT_FLASH_LITE_MODEL,
+      contents: options.contents,
+      config: {
+        systemInstruction: `${options.system}
+
+${SCOPE_LIMIT_DISCLAIMER}`,
+        responseMimeType: "application/json",
+        ...(options.responseSchema ? { responseSchema: options.responseSchema } : {}),
+      },
+    }),
+    timeoutMs,
   );
+  return parseModelText(response.text, options.zodSchema);
+}
+
+/** Calls the model, validating each answer and retrying only failures that can succeed on a retry. */
+async function generateWithRetries<T>(options: GenerateStructuredOptions<T>, apiKey: string): Promise<T> {
+  const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: "v1beta" } });
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
+  let backoffMs = INITIAL_BACKOFF_MS;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      return await generateOnce(ai, options, timeoutMs);
+    } catch (err: unknown) {
+      // Server log only: the reason a Gemini call failed (no prompt or key content).
+      console.error(`[gemini] attempt ${attempt + 1} failed: ${err instanceof Error ? err.message.slice(0, LOGGED_MESSAGE_LENGTH) : "unknown error"}`);
+      if (isTerminalError(err)) throw err;
+      if (!(isRetryableGeminiError(err) && attempt < maxRetries)) {
+        throw new AppError(HTTP_STATUS.BAD_GATEWAY, "Failed to generate structured response from Gemini.");
+      }
+      await sleep(backoffMs);
+      backoffMs *= 2;
+    }
+  }
+  throw new AppError(HTTP_STATUS.BAD_GATEWAY, "Gemini request retries exhausted.");
 }
 
 /**
@@ -60,89 +155,9 @@ function isRetryableGeminiError(err: unknown): boolean {
  */
 export async function generateStructured<T>(options: GenerateStructuredOptions<T>): Promise<T> {
   if (isDemoMode() || !hasGeminiKey()) {
-    if (options.demoFixture) {
-      const fixtureData = options.demoFixture();
-      return options.zodSchema.parse(fixtureData);
-    }
-    throw new AppError(500, "Gemini API key is not configured and no demo fixture is available.");
+    return fixtureOrThrow(options, "Gemini API key is not configured and no demo fixture is available.");
   }
-
   const apiKey = getGeminiApiKey();
-  if (!apiKey) {
-    if (options.demoFixture) return options.zodSchema.parse(options.demoFixture());
-    throw new AppError(500, "Gemini API key is not configured.");
-  }
-
-  const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: "v1beta" } });
-  const modelName = options.model ?? DEFAULT_FLASH_LITE_MODEL;
-  const fullSystem = `${options.system}\n\n${SCOPE_LIMIT_DISCLAIMER}`;
-  const timeoutMs = options.timeoutMs ?? 25000;
-  const maxRetries = options.maxRetries ?? 2;
-
-  let attempt = 0;
-  let backoffMs = 500;
-
-  while (attempt <= maxRetries) {
-    try {
-      geminiMetrics.calls += 1;
-
-      const callPromise = ai.models.generateContent({
-        model: modelName,
-        contents: options.contents,
-        config: {
-          systemInstruction: fullSystem,
-          responseMimeType: "application/json",
-          ...(options.responseSchema ? { responseSchema: options.responseSchema } : {}),
-        },
-      });
-
-      let timeoutTimer: NodeJS.Timeout | undefined;
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutTimer = setTimeout(() => {
-          reject(new AppError(504, `Gemini request timed out after ${timeoutMs / 1000}s.`));
-        }, timeoutMs);
-      });
-
-      const response = await Promise.race([callPromise, timeoutPromise]).finally(() => {
-        if (timeoutTimer) clearTimeout(timeoutTimer);
-      });
-
-      const text = response.text;
-      if (!text || text.trim().length === 0) {
-        throw new AppError(502, "Gemini returned an empty response.");
-      }
-
-      let parsedJson: unknown;
-      try {
-        parsedJson = JSON.parse(text);
-      } catch {
-        throw new AppError(502, "Gemini output is not valid JSON.");
-      }
-
-      const validated = options.zodSchema.safeParse(parsedJson);
-      if (!validated.success) {
-        throw new AppError(502, "Gemini output failed schema validation.");
-      }
-
-      return validated.data;
-    } catch (err: unknown) {
-      // Server log only: the reason a Gemini call failed (no prompt or key content).
-      console.error(`[gemini] attempt ${attempt + 1} failed: ${err instanceof Error ? err.message.slice(0, 200) : "unknown error"}`);
-      if (err instanceof AppError && err.status === 504) throw err;
-      if (err instanceof AppError && err.status === 502 && (err.message.includes("schema") || err.message.includes("valid JSON"))) {
-        throw err;
-      }
-
-      if (isRetryableGeminiError(err) && attempt < maxRetries) {
-        attempt += 1;
-        await new Promise((resolve) => setTimeout(resolve, backoffMs));
-        backoffMs *= 2;
-        continue;
-      }
-
-      throw new AppError(502, "Failed to generate structured response from Gemini.");
-    }
-  }
-
-  throw new AppError(502, "Gemini request retries exhausted.");
+  if (!apiKey) return fixtureOrThrow(options, "Gemini API key is not configured.");
+  return generateWithRetries(options, apiKey);
 }

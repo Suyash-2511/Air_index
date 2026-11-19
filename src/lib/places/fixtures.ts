@@ -1,5 +1,4 @@
-import type { AutocompletePrediction, PlaceDetails } from "./autocomplete";
-import type { ReverseGeocodeResult } from "./geocode";
+import type { AutocompletePrediction, PlaceDetails, ReverseGeocodeResult } from "./types";
 
 interface FixturePlace extends PlaceDetails {
   primaryText: string;
@@ -10,7 +9,7 @@ interface FixturePlace extends PlaceDetails {
  * Deterministic demo places for Indian metropolitan and tier-2 regions.
  * Enables offline searching, UI prototyping, and testing without live Maps credentials.
  */
-export const DEMO_PLACES: readonly FixturePlace[] = [
+const DEMO_PLACES: readonly FixturePlace[] = [
   {
     placeId: "fixture-delhi-connaught",
     primaryText: "Connaught Place",

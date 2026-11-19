@@ -1,14 +1,14 @@
 "use client";
 
-import { useLocale } from "@/hooks/useLocale";
-import { IconCheck } from "../ui/icons";
+import { useLocale } from "@/hooks";
+import { IconCheck } from "../ui";
 import styles from "./StepNav.module.css";
 
 /** Step number in the 3-step Saans workflow. */
 export type StepNumber = 1 | 2 | 3;
 
 /** Props for the StepNav progress component. */
-export interface StepNavProps {
+interface StepNavProps {
   currentStep: StepNumber;
 }
 

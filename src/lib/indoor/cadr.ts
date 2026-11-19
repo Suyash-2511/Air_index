@@ -1,10 +1,13 @@
-import { INFILTRATION_BY_WINDOW_HABIT } from "@/lib/exposure/infiltration";
-import type { HomeSetup } from "@/lib/types";
+import { INFILTRATION_BY_WINDOW_HABIT } from "../exposure";
+import type { HomeSetup } from "../types";
+import { roundTo } from "../format";
+import { MINUTES_PER_HOUR } from "../time-units";
+import { CFM_PER_M3H, DEFAULT_DEPOSITION_RATE, DEFAULT_NATURAL_ACH, FALLBACK_INFILTRATION, SMOG_TARGET_ACH } from "./constants";
 
 /**
  * Dimensions of a residential room in metres.
  */
-export interface RoomDimensions {
+interface RoomDimensions {
   lengthM: number;
   widthM: number;
   heightM: number;
@@ -13,7 +16,7 @@ export interface RoomDimensions {
 /**
  * Configuration options for sizing a room air purifier and predicting indoor PM2.5.
  */
-export interface PurifierSizingOptions {
+interface PurifierSizingOptions {
   room: RoomDimensions;
   targetAch?: number;
   outdoorPm25: number;
@@ -27,7 +30,7 @@ export interface PurifierSizingOptions {
  * Guidance: AHAM ANSI/AHAM AC-1 (2/3 rule) and US EPA "Guide to Air Cleaners in the Home"
  * specify 4.8 air changes per hour (ACH) for severe smog events, and ~2.0 ACH for baseline days.
  */
-export interface PurifierSizingResult {
+interface PurifierSizingResult {
   volumeM3: number;
   cadrM3h: number;
   cadrCfm: number;
@@ -46,26 +49,26 @@ export interface PurifierSizingResult {
  */
 export function calculatePurifierSizing({
   room,
-  targetAch = 4.8,
+  targetAch = SMOG_TARGET_ACH,
   outdoorPm25,
   windowHabit = "kept_closed",
-  naturalAch = 0.5,
-  depositionRate = 0.2,
+  naturalAch = DEFAULT_NATURAL_ACH,
+  depositionRate = DEFAULT_DEPOSITION_RATE,
 }: PurifierSizingOptions): PurifierSizingResult {
-  const volumeM3 = Math.round(room.lengthM * room.widthM * room.heightM * 100) / 100;
+  const volumeM3 = roundTo(room.lengthM * room.widthM * room.heightM, 2);
   const cadrM3h = Math.round(volumeM3 * targetAch);
-  const cadrCfm = Math.round(cadrM3h * 0.5886);
+  const cadrCfm = Math.round(cadrM3h * CFM_PER_M3H);
 
-  const baselineFactor = INFILTRATION_BY_WINDOW_HABIT[windowHabit] ?? 0.45;
-  const indoorWithout = Math.round(outdoorPm25 * baselineFactor * 10) / 10;
+  const baselineFactor = INFILTRATION_BY_WINDOW_HABIT[windowHabit] ?? FALLBACK_INFILTRATION;
+  const indoorWithout = roundTo(outdoorPm25 * baselineFactor, 1);
 
   // Numerator: P * a * C_out = baselineFactor * (a + k) * C_out
   const numerator = baselineFactor * (naturalAch + depositionRate) * outdoorPm25;
   const effectiveCadOverV = cadrM3h / (volumeM3 > 0 ? volumeM3 : 1);
   const denominator = naturalAch + depositionRate + effectiveCadOverV;
 
-  const indoorWith = Math.round((numerator / denominator) * 10) / 10;
-  const minutesToClean = effectiveCadOverV > 0 ? Math.round((60 / effectiveCadOverV) * 10) / 10 : 0;
+  const indoorWith = roundTo(numerator / denominator, 1);
+  const minutesToClean = effectiveCadOverV > 0 ? roundTo(MINUTES_PER_HOUR / effectiveCadOverV, 1) : 0;
 
   return {
     volumeM3,

@@ -1,73 +1,28 @@
-import type { Household, Location } from "@/lib/types";
+import { buildAsthmaticMother, buildDefaultHome, buildOvernightSleep } from "@/lib/household-defaults";
+import type { Household, HouseholdMember, Location } from "@/lib/types";
 
-/**
- * Returns a default single-member household routine for new visitors.
- */
-export function getDefaultHousehold(location: Location): Household {
+/** The visitor's own routine: a cycling commute and a long indoor day. */
+function buildUserMember(): HouseholdMember {
   return {
-    members: [
-      {
-        id: "m-user",
-        label: "You",
-        ageBand: "adult",
-        sensitivities: [],
-        windows: [
-          { activity: "sleep", setting: "indoor", startHour: 22, durationMinutes: 480, room: "bedroom", mask: false },
-          { activity: "rest_indoor", setting: "indoor", startHour: 6, durationMinutes: 120, room: "living", mask: false },
-          { activity: "commute_cycle", setting: "outdoor", startHour: 8, durationMinutes: 60, room: "living", mask: false },
-          { activity: "light_indoor", setting: "indoor", startHour: 9, durationMinutes: 780, room: "living", mask: false },
-        ],
-      },
+    id: "m-user",
+    label: "You",
+    ageBand: "adult",
+    sensitivities: [],
+    windows: [
+      buildOvernightSleep(),
+      { activity: "rest_indoor", setting: "indoor", startHour: 6, durationMinutes: 120, room: "living", mask: false },
+      { activity: "commute_cycle", setting: "outdoor", startHour: 8, durationMinutes: 60, room: "living", mask: false },
+      { activity: "light_indoor", setting: "indoor", startHour: 9, durationMinutes: 780, room: "living", mask: false },
     ],
-    home: {
-      windowHabit: "open_often",
-      hasPurifier: false,
-      purifierRoom: "living",
-      cookingFuel: "lpg",
-      hasExhaustFan: false,
-      smokingIndoors: false,
-    },
-    location,
   };
 }
 
-/**
- * Returns a realistic multi-generational Delhi household routine for instant demo runs.
- */
-export function getSampleHousehold(loc: Location): Household {
-  return {
-    members: [
-      {
-        id: "m-user",
-        label: "You",
-        ageBand: "adult",
-        sensitivities: [],
-        windows: [
-          { activity: "sleep", setting: "indoor", startHour: 22, durationMinutes: 480, room: "bedroom", mask: false },
-          { activity: "rest_indoor", setting: "indoor", startHour: 6, durationMinutes: 120, room: "living", mask: false },
-          { activity: "commute_cycle", setting: "outdoor", startHour: 8, durationMinutes: 60, room: "living", mask: false },
-          { activity: "light_indoor", setting: "indoor", startHour: 9, durationMinutes: 780, room: "living", mask: false },
-        ],
-      },
-      {
-        id: "m-mother",
-        label: "Mother",
-        ageBand: "older_adult",
-        sensitivities: ["asthma"],
-        windows: [
-          { activity: "sleep", setting: "indoor", startHour: 22, durationMinutes: 480, room: "bedroom", mask: false },
-          { activity: "rest_indoor", setting: "indoor", startHour: 6, durationMinutes: 960, room: "living", mask: false },
-        ],
-      },
-    ],
-    home: {
-      windowHabit: "open_often",
-      hasPurifier: false,
-      purifierRoom: "living",
-      cookingFuel: "lpg",
-      hasExhaustFan: false,
-      smokingIndoors: false,
-    },
-    location: loc,
-  };
+/** Returns a default single-member household routine for new visitors. */
+export function getDefaultHousehold(location: Location): Household {
+  return { members: [buildUserMember()], home: buildDefaultHome(), location };
+}
+
+/** Returns a realistic multi-generational Delhi household routine for instant demo runs. */
+export function getSampleHousehold(location: Location): Household {
+  return { members: [buildUserMember(), buildAsthmaticMother("m-mother")], home: buildDefaultHome(), location };
 }

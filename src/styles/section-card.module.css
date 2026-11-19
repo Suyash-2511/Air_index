@@ -1,0 +1,47 @@
+/*
+ * Shared look for self-contained cards. Components compose these classes and change spacing
+ * through the custom properties instead of redeclaring the rules.
+ */
+
+/* A tinted card with a quiet border, used for sections that sit in the page flow. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--section-card-padding, var(--space-20));
+  background-color: var(--sky-1);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+}
+
+/* A raised paper panel with a heavy top rule, used for the editor and chart panels. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap, var(--space-16));
+  padding: var(--space-24);
+  background-color: var(--surface);
+  border: 1px solid var(--rule);
+  border-top: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: 1.5;
+}

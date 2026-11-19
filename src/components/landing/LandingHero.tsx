@@ -1,12 +1,12 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import { useLocale } from "@/hooks/useLocale";
-import { IconArrowRight } from "../ui/icons";
+import { useLocale } from "@/hooks";
+import { IconArrowRight } from "../ui";
+import { cssVars } from "../ui";
 import styles from "./LandingHero.module.css";
 import { StationReading } from "./StationReading";
 
-export interface LandingHeroProps {
+interface LandingHeroProps {
   onPlanHome: () => void;
   onSampleFamily: () => void;
   /** Live outdoor PM2.5; undefined while loading or when air data is unavailable. */
@@ -64,7 +64,7 @@ export function LandingHero({ onPlanHome, onSampleFamily, livePm25, cityName = "
 
         <ol className={styles.steps} aria-label={t("hero_how_it_works")}>
           {steps.map((s, i) => (
-            <li key={s.n} className={styles.step} style={{ "--i": i } as CSSProperties}>
+            <li key={s.n} className={styles.step} style={cssVars({ "--i": i })}>
               <span className={styles.stepNumber} aria-hidden="true">
                 {s.n}
               </span>

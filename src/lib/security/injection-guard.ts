@@ -33,19 +33,23 @@ const INJECTION_PATTERNS = [
   /jailbreak/gi,
 ];
 
+/** Whitespace controls that are legitimate in user text: tab, line feed, carriage return. */
+const ALLOWED_CONTROL_CODES = new Set([9, 10, 13]);
+/** Zero-width characters and the byte-order mark; invisible, so they can hide instructions from a reader. */
+const ZERO_WIDTH_CODES = new Set([0x200b, 0x200c, 0x200d, 0xfeff]);
+const FIRST_PRINTABLE_CODE = 32;
+const DELETE_CODE = 127;
+
+function isStrippedCode(code: number): boolean {
+  if (ALLOWED_CONTROL_CODES.has(code)) return false;
+  return code < FIRST_PRINTABLE_CODE || code === DELETE_CODE || ZERO_WIDTH_CODES.has(code);
+}
+
+/** Removes control characters (except tab and newlines) and invisible zero-width characters. */
 function stripControlChars(str: string): string {
-  let out = "";
-  for (let i = 0; i < str.length; i++) {
-    const code = str.charCodeAt(i);
-    if (code === 10 || code === 13 || code === 9) {
-      out += str[i];
-    } else if (code >= 32 && code !== 127) {
-      if (code !== 0x200b && code !== 0x200c && code !== 0x200d && code !== 0xfeff) {
-        out += str[i];
-      }
-    }
-  }
-  return out;
+  return Array.from(str)
+    .filter((char) => !isStrippedCode(char.codePointAt(0) ?? 0))
+    .join("");
 }
 
 /**

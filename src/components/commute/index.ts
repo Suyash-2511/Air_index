@@ -1,1 +1,1 @@
-export { CommuteCompare, type CommuteCompareProps } from "./CommuteCompare";
+export { CommuteCompare } from "./CommuteCompare";

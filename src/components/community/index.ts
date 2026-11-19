@@ -1,1 +1,1 @@
-export { CommunityPledge, PLEDGES, type CommunityPledgeProps, type PledgeDefinition } from "./CommunityPledge";
+export { CommunityPledge } from "./CommunityPledge";

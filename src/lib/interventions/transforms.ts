@@ -1,4 +1,4 @@
-import { minutesByHour, outdoorAt } from "../exposure/dose";
+import { minutesByHour, outdoorAt } from "../exposure";
 import type { ActivityWindow, DayForecast, HomeSetup, Household, HouseholdMember } from "../types";
 
 /**

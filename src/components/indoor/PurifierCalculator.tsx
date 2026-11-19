@@ -1,54 +1,75 @@
 "use client";
 
 import { useId, useMemo, useState } from "react";
-import { useLocale } from "@/hooks/useLocale";
-import { calculatePurifierSizing } from "@/lib/indoor/cadr";
+import { useLocale } from "@/hooks";
+import { calculatePurifierSizing, NORMAL_TARGET_ACH, SMOG_TARGET_ACH } from "@/lib/indoor";
 import type { HomeSetup } from "@/lib/types";
+import { Select } from "../ui";
+import { NumberField } from "./NumberField";
 import styles from "./PurifierCalculator.module.css";
 
 /** Props for the PurifierCalculator room sizing tool. */
-export interface PurifierCalculatorProps {
+interface PurifierCalculatorProps {
   outdoorPm25: number;
   windowHabit?: HomeSetup["windowHabit"];
 }
 
-const PRESETS = [
-  { id: "bedroom", labelKey: "room_preset_bedroom", defaultLabel: "Bedroom", l: 3.0, w: 3.5, h: 2.8 },
-  { id: "living", labelKey: "room_preset_living", defaultLabel: "Living room", l: 4.0, w: 5.0, h: 2.8 },
-  { id: "study", labelKey: "room_preset_study", defaultLabel: "Study", l: 3.0, w: 3.0, h: 2.8 },
-] as const;
+interface Room {
+  lengthM: number;
+  widthM: number;
+  heightM: number;
+}
+
+type Preset = Room & { id: string; labelKey: string };
+
+/** Typical Indian flat rooms, so most visitors can start from a preset instead of measuring. */
+const PRESETS: readonly Preset[] = [
+  { id: "bedroom", labelKey: "room_preset_bedroom", lengthM: 3.0, widthM: 3.5, heightM: 2.8 },
+  { id: "living", labelKey: "room_preset_living", lengthM: 4.0, widthM: 5.0, heightM: 2.8 },
+  { id: "study", labelKey: "room_preset_study", lengthM: 3.0, widthM: 3.0, heightM: 2.8 },
+];
+const CUSTOM_PRESET_ID = "custom";
+
+const DIMENSION_LIMITS = { length: { min: 1, max: 15 }, width: { min: 1, max: 15 }, height: { min: 2, max: 5 } };
+
+function PresetButtons({ activeId, onPick }: { activeId: string; onPick: (preset: Preset) => void }) {
+  const { t } = useLocale();
+  return (
+    <div className={styles.presetGroup} role="group" aria-label={t("cadr_presets_aria")}>
+      <span className={styles.presetLabel}>{t("cadr_presets_label")}</span>
+      {PRESETS.map((preset) => (
+        <button key={preset.id} type="button" className={styles.presetButton} data-active={activeId === preset.id} onClick={() => onPick(preset)}>
+          {t(preset.labelKey)} ({preset.lengthM}×{preset.widthM} m)
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /**
  * Interactive room sizing calculator determining required CADR and predicted indoor PM2.5.
  */
 export function PurifierCalculator({ outdoorPm25, windowHabit = "kept_closed" }: PurifierCalculatorProps) {
   const { t } = useLocale();
-  const [activePreset, setActivePreset] = useState<string>("bedroom");
-  const [lengthM, setLengthM] = useState(3.0);
-  const [widthM, setWidthM] = useState(3.5);
-  const [heightM, setHeightM] = useState(2.8);
-  const [targetAch, setTargetAch] = useState(4.8);
-
-  const lengthId = useId();
-  const widthId = useId();
-  const heightId = useId();
+  const [activePreset, setActivePreset] = useState("bedroom");
+  const [room, setRoom] = useState<Room>(PRESETS[0] ?? { lengthM: 3, widthM: 3.5, heightM: 2.8 });
+  const [targetAch, setTargetAch] = useState(SMOG_TARGET_ACH);
   const achId = useId();
 
-  const handleApplyPreset = (p: (typeof PRESETS)[number]) => {
-    setActivePreset(p.id);
-    setLengthM(p.l);
-    setWidthM(p.w);
-    setHeightM(p.h);
+  const editRoom = (change: Partial<Room>) => {
+    setActivePreset(CUSTOM_PRESET_ID);
+    setRoom((previous) => ({ ...previous, ...change }));
   };
 
-  const result = useMemo(() => {
-    return calculatePurifierSizing({
-      room: { lengthM, widthM, heightM },
-      targetAch,
-      outdoorPm25,
-      windowHabit,
-    });
-  }, [lengthM, widthM, heightM, targetAch, outdoorPm25, windowHabit]);
+  const pickPreset = (preset: Preset) => {
+    setActivePreset(preset.id);
+    setRoom({ lengthM: preset.lengthM, widthM: preset.widthM, heightM: preset.heightM });
+  };
+
+  const result = useMemo(
+    () => calculatePurifierSizing({ room, targetAch, outdoorPm25, windowHabit }),
+    [room, targetAch, outdoorPm25, windowHabit],
+  );
 
   return (
     <section className={styles.calculator} aria-labelledby="purifier-calc-title">
@@ -57,98 +78,32 @@ export function PurifierCalculator({ outdoorPm25, windowHabit = "kept_closed" }:
         <p className={styles.subtitle}>{t("cadr_subtitle")}</p>
       </header>
 
-      <div className={styles.presetGroup} role="group" aria-label={t("cadr_presets_aria")}>
-        <span className={styles.presetLabel}>{t("cadr_presets_label")}</span>
-        {PRESETS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={styles.presetButton}
-            data-active={activePreset === p.id}
-            onClick={() => handleApplyPreset(p)}
-          >
-            {t(p.labelKey)} ({p.l}×{p.w} m)
-          </button>
-        ))}
-      </div>
+      <PresetButtons activeId={activePreset} onPick={pickPreset} />
 
       <div className={styles.grid}>
-        <div className={styles.field}>
-          <label htmlFor={lengthId} className={styles.label}>{t("cadr_length_label")}</label>
-          <input
-            id={lengthId}
-            type="number"
-            min={1}
-            max={15}
-            step={0.1}
-            value={lengthM}
-            onChange={(e) => {
-              setActivePreset("custom");
-              setLengthM(parseFloat(e.target.value) || 1);
-            }}
-            className={styles.input}
-          />
-        </div>
-
-        <div className={styles.field}>
-          <label htmlFor={widthId} className={styles.label}>{t("cadr_width_label")}</label>
-          <input
-            id={widthId}
-            type="number"
-            min={1}
-            max={15}
-            step={0.1}
-            value={widthM}
-            onChange={(e) => {
-              setActivePreset("custom");
-              setWidthM(parseFloat(e.target.value) || 1);
-            }}
-            className={styles.input}
-          />
-        </div>
-
-        <div className={styles.field}>
-          <label htmlFor={heightId} className={styles.label}>{t("cadr_height_label")}</label>
-          <input
-            id={heightId}
-            type="number"
-            min={2}
-            max={5}
-            step={0.1}
-            value={heightM}
-            onChange={(e) => {
-              setActivePreset("custom");
-              setHeightM(parseFloat(e.target.value) || 2);
-            }}
-            className={styles.input}
-          />
-        </div>
+        <NumberField label={t("cadr_length_label")} value={room.lengthM} {...DIMENSION_LIMITS.length} onChange={(lengthM) => editRoom({ lengthM })} />
+        <NumberField label={t("cadr_width_label")} value={room.widthM} {...DIMENSION_LIMITS.width} onChange={(widthM) => editRoom({ widthM })} />
+        <NumberField label={t("cadr_height_label")} value={room.heightM} {...DIMENSION_LIMITS.height} onChange={(heightM) => editRoom({ heightM })} />
 
         <div className={styles.field}>
           <label htmlFor={achId} className={styles.label}>{t("cadr_ach_label")}</label>
-          <select
+          <Select
             id={achId}
             value={targetAch}
-            onChange={(e) => setTargetAch(parseFloat(e.target.value))}
+            options={[
+              { value: SMOG_TARGET_ACH, label: t("cadr_ach_smog") },
+              { value: NORMAL_TARGET_ACH, label: t("cadr_ach_normal") },
+            ]}
+            onChange={setTargetAch}
             className={styles.select}
-          >
-            <option value={4.8}>{t("cadr_ach_smog")}</option>
-            <option value={2.0}>{t("cadr_ach_normal")}</option>
-          </select>
+          />
         </div>
       </div>
 
       <div className={styles.resultBox} aria-live="polite">
-        <p className={styles.resultTitle}>
-          {t("cadr_result_need", { m3h: result.cadrM3h, cfm: result.cadrCfm })}
-        </p>
+        <p className={styles.resultTitle}>{t("cadr_result_need", { m3h: result.cadrM3h, cfm: result.cadrCfm })}</p>
         <p className={styles.resultDetail}>
-          {t("cadr_result_detail", {
-            outdoor: outdoorPm25,
-            without: result.indoorWithout,
-            with: result.indoorWith,
-            min: result.minutesToClean,
-          })}
+          {t("cadr_result_detail", { outdoor: outdoorPm25, without: result.indoorWithout, with: result.indoorWith, min: result.minutesToClean })}
         </p>
       </div>
     </section>

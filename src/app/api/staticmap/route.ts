@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { enforceRateLimit, getClientIp, jsonError } from "@/lib/http/route-helpers";
-import { getStaticMap } from "@/lib/maps/static-map";
-import { tileRateLimiter } from "@/lib/security/rate-limit";
+import { enforceRateLimit, getClientIp, jsonError } from "@/lib/http";
+import { getStaticMap } from "@/lib/maps";
+import { HTTP_STATUS, tileRateLimiter } from "@/lib/security";
 
 const querySchema = z.object({
   lat: z.coerce.number().min(-90).max(90),
@@ -19,12 +19,12 @@ export async function GET(request: Request): Promise<Response> {
   const rawLat = url.searchParams.get("lat");
   const rawLng = url.searchParams.get("lng");
   if (!rawLat || !rawLng) {
-    return NextResponse.json({ error: "lat and lng must be valid coordinates." }, { status: 400 });
+    return NextResponse.json({ error: "lat and lng must be valid coordinates." }, { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   const parsed = querySchema.safeParse({ lat: rawLat, lng: rawLng });
   if (!parsed.success) {
-    return NextResponse.json({ error: "lat and lng must be valid coordinates." }, { status: 400 });
+    return NextResponse.json({ error: "lat and lng must be valid coordinates." }, { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   try {

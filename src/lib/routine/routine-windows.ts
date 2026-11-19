@@ -1,3 +1,13 @@
+import { HOURS_PER_DAY } from "../time-units";
+import {
+  DAYTIME_LAST_WINDOW_START,
+  DAYTIME_START_HOUR,
+  SMOG_PEAK_MEAN_MULTIPLE,
+  SMOG_PEAK_MIN_UGM3,
+  WINDOW_HOURS,
+} from "./constants";
+
+/** A daytime window scored by its mean PM2.5 (and ozone, when forecast). */
 export interface WindowScore {
   start: number;
   end: number;
@@ -5,52 +15,61 @@ export interface WindowScore {
   meanO3?: number | undefined;
 }
 
+interface Reading {
+  hour: number;
+  pm25: number;
+}
+
+/** Mean of a value over an hour and the next, or undefined when either hour has no forecast. */
+function meanOfHourPair(values: ReadonlyMap<number, number>, hour: number): number | undefined {
+  const first = values.get(hour);
+  const second = values.get(hour + 1);
+  return first !== undefined && second !== undefined ? (first + second) / 2 : undefined;
+}
+
 /** Evaluates all 2-hour daytime blocks (07:00-19:00) ranked by lowest PM2.5. */
 export function findDaytimeWindows(
-  fMap: ReadonlyMap<number, number>,
-  o3Map: ReadonlyMap<number, number>,
+  pm25ByHour: ReadonlyMap<number, number>,
+  o3ByHour: ReadonlyMap<number, number>,
 ): WindowScore[] {
   const windows: WindowScore[] = [];
-  for (let h = 7; h <= 17; h += 1) {
-    const p1 = fMap.get(h);
-    const p2 = fMap.get(h + 1);
-    if (p1 !== undefined && p2 !== undefined) {
-      const mean = (p1 + p2) / 2;
-      const o1 = o3Map.get(h);
-      const o2 = o3Map.get(h + 1);
-      const meanO3 = o1 !== undefined && o2 !== undefined ? (o1 + o2) / 2 : undefined;
-      windows.push({ start: h, end: h + 2, mean, meanO3 });
-    }
+  for (let hour = DAYTIME_START_HOUR; hour <= DAYTIME_LAST_WINDOW_START; hour += 1) {
+    const mean = meanOfHourPair(pm25ByHour, hour);
+    if (mean === undefined) continue;
+    windows.push({ start: hour, end: hour + WINDOW_HOURS, mean, meanO3: meanOfHourPair(o3ByHour, hour) });
   }
   return windows.sort((a, b) => a.mean - b.mean);
 }
 
-/** Identifies contiguous peak smog hours exceeding 1.5x daily average or 90 µg/m³. */
-export function findDirtiestStretch(
-  forecast: readonly { hour: number; pm25: number }[],
-): { start: number; end: number; mean: number } | undefined {
-  if (forecast.length === 0) return undefined;
-  const dailyMean = forecast.reduce((s, f) => s + f.pm25, 0) / forecast.length;
-  const threshold = Math.max(1.5 * dailyMean, 90);
-  const stretches: { hour: number; pm25: number }[][] = [];
-  let cur: { hour: number; pm25: number }[] = [];
+function averagePm25(readings: readonly Reading[]): number {
+  return readings.reduce((sum, reading) => sum + reading.pm25, 0) / readings.length;
+}
 
-  for (const f of forecast) {
-    if (f.pm25 >= threshold) cur.push(f);
-    else if (cur.length > 0) {
-      stretches.push(cur);
-      cur = [];
+/** Splits the day into runs of consecutive readings at or above the threshold. */
+function groupPeakRuns(forecast: readonly Reading[], threshold: number): Reading[][] {
+  const runs: Reading[][] = [];
+  let current: Reading[] = [];
+  for (const reading of forecast) {
+    if (reading.pm25 >= threshold) {
+      current.push(reading);
+    } else if (current.length > 0) {
+      runs.push(current);
+      current = [];
     }
   }
-  if (cur.length > 0) stretches.push(cur);
-  if (stretches.length === 0) return undefined;
+  if (current.length > 0) runs.push(current);
+  return runs;
+}
 
-  stretches.sort((a, b) => b.reduce((s, f) => s + f.pm25, 0) / b.length - a.reduce((s, f) => s + f.pm25, 0) / a.length);
-  const worst = stretches[0];
-  if (!worst || worst.length === 0) return undefined;
-
-  const start = worst[0]?.hour ?? 0;
-  const end = Math.min(24, (worst[worst.length - 1]?.hour ?? 0) + 1);
-  const mean = Math.round(worst.reduce((s, f) => s + f.pm25, 0) / worst.length);
-  return { start, end, mean };
+/** Identifies contiguous peak smog hours exceeding 1.5x daily average or 90 µg/m³. */
+export function findDirtiestStretch(
+  forecast: readonly Reading[],
+): { start: number; end: number; mean: number } | undefined {
+  if (forecast.length === 0) return undefined;
+  const threshold = Math.max(SMOG_PEAK_MEAN_MULTIPLE * averagePm25(forecast), SMOG_PEAK_MIN_UGM3);
+  const worst = groupPeakRuns(forecast, threshold).sort((a, b) => averagePm25(b) - averagePm25(a))[0];
+  const first = worst?.[0];
+  const last = worst?.[worst.length - 1];
+  if (!worst || !first || !last) return undefined;
+  return { start: first.hour, end: Math.min(HOURS_PER_DAY, last.hour + 1), mean: Math.round(averagePm25(worst)) };
 }

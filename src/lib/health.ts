@@ -2,10 +2,10 @@ import { airCache, autocompleteCache, geocodeCache, planCache, tileCache, type C
 import { hasAirKey, hasGeminiKey } from "./env";
 
 /** Whether a dependency is calling the real service or running on fixtures. */
-export type ServiceMode = "live" | "demo";
+type ServiceMode = "live" | "demo";
 
 /** Shape of the /api/health response. Contains no keys, hosts or user data. */
-export interface HealthReport {
+interface HealthReport {
   status: "ok";
   uptimeSeconds: number;
   services: {

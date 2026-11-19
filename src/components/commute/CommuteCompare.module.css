@@ -1,31 +1,17 @@
 .container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
-  padding: var(--space-20);
-  background-color: var(--sky-1);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-card);
+  composes: card from "../../styles/section-card.module.css";
 }
 
 .header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  composes: header from "../../styles/section-card.module.css";
 }
 
 .title {
-  font-family: var(--font-display);
-  font-size: var(--text-h3);
-  font-weight: 400;
-  color: var(--ink);
-  letter-spacing: -0.01em;
+  composes: title from "../../styles/section-card.module.css";
 }
 
 .subtitle {
-  font-size: var(--text-sm);
-  color: var(--ink-secondary);
-  line-height: 1.5;
+  composes: subtitle from "../../styles/section-card.module.css";
 }
 
 .controls {

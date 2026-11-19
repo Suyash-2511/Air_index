@@ -1,4 +1,4 @@
-import { INTERVENTION_TITLES } from "../gemini/grounding";
+import { INTERVENTION_TITLES } from "../interventions";
 import type { Activity } from "../types";
 
 /** Ranked change summary consumed by the routine builder. */

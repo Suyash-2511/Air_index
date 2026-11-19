@@ -1,8 +1,8 @@
 import type { HTMLAttributes } from "react";
-import { useLocale } from "@/hooks/useLocale";
+import { useLocale } from "@/hooks";
 import styles from "./StaticFallback.module.css";
 
-export interface StaticFallbackProps extends HTMLAttributes<HTMLDivElement> {
+interface StaticFallbackProps extends HTMLAttributes<HTMLDivElement> {
   pm25?: number | undefined;
   cityName?: string;
 }

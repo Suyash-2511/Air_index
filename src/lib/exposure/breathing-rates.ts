@@ -1,3 +1,4 @@
+import { MINUTES_PER_HOUR } from "../time-units";
 import type { Activity, AgeBand } from "../types";
 
 /**
@@ -48,8 +49,6 @@ export const ACTIVITY_INTENSITY: Readonly<Record<Activity, Intensity>> = {
   outdoor_exercise: "high",
   outdoor_play: "moderate",
 };
-
-const MINUTES_PER_HOUR = 60;
 
 /**
  * Breathing rate in m³ per hour for a person of this age band doing this

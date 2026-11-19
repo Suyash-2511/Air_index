@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 4);
 
 /** Options configuring duration and initial delay for animated number count-ups. */
-export interface CountUpOptions {
+interface CountUpOptions {
   /** Time the count takes once it starts, in milliseconds. */
   duration?: number;
   /** Time to wait before the count starts, in milliseconds. */

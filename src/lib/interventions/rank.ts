@@ -1,10 +1,10 @@
-import { householdDose } from "../exposure/dose";
-import { vulnerabilityWeight } from "../exposure/vulnerability";
+import { householdDose } from "../exposure";
+import { vulnerabilityWeight } from "../exposure";
 import type { DayForecast, DoseBreakdown, Effort, Household } from "../types";
 import { INTERVENTIONS, type Intervention, type InterventionKind } from "./catalogue";
 
 /** What one member gains from a change. */
-export interface MemberSaving {
+interface MemberSaving {
   memberId: string;
   savedMicrograms: number;
   savedPercent: number;
@@ -23,6 +23,7 @@ export interface RankedIntervention {
   beneficiaries: readonly MemberSaving[];
 }
 
+/** The whole plan: baseline doses and the changes ranked by how much they save. */
 export interface Plan {
   baseline: readonly DoseBreakdown[];
   baselineTotal: number;
@@ -36,27 +37,42 @@ function percent(part: number, whole: number): number {
   return whole > 0 ? (part / whole) * 100 : 0;
 }
 
-function evaluate(
-  intervention: Intervention,
+/** Today's dose before any change: the starting point every change is measured against. */
+interface Baseline {
+  doses: readonly DoseBreakdown[];
+  total: number;
+}
+
+/** Per-member savings of a change, and the vulnerability-weighted score used to rank it. */
+function measureSavings(
   household: Household,
-  forecast: DayForecast,
   baseline: readonly DoseBreakdown[],
-  baselineTotal: number,
-): RankedIntervention | null {
-  const changed = intervention.apply(household, forecast);
-  if (!changed) return null;
-  const after = householdDose(changed, forecast);
-  let priorityScore = 0;
+  after: readonly DoseBreakdown[],
+): { beneficiaries: MemberSaving[]; priorityScore: number } {
   const beneficiaries: MemberSaving[] = [];
-  household.members.forEach((member, i) => {
-    const before = baseline[i]?.totalMicrograms ?? 0;
-    const saved = before - (after[i]?.totalMicrograms ?? 0);
+  let priorityScore = 0;
+  household.members.forEach((member, index) => {
+    const before = baseline[index]?.totalMicrograms ?? 0;
+    const saved = before - (after[index]?.totalMicrograms ?? 0);
     if (saved > MIN_SAVING) {
       beneficiaries.push({ memberId: member.id, savedMicrograms: saved, savedPercent: percent(saved, before) });
     }
     priorityScore += saved * vulnerabilityWeight(member);
   });
-  const savedMicrograms = beneficiaries.reduce((sum, b) => sum + b.savedMicrograms, 0);
+  return { beneficiaries, priorityScore };
+}
+
+function evaluate(
+  intervention: Intervention,
+  household: Household,
+  forecast: DayForecast,
+  baseline: Baseline,
+): RankedIntervention | null {
+  const changed = intervention.apply(household, forecast);
+  if (!changed) return null;
+
+  const { beneficiaries, priorityScore } = measureSavings(household, baseline.doses, householdDose(changed, forecast));
+  const savedMicrograms = beneficiaries.reduce((sum, beneficiary) => sum + beneficiary.savedMicrograms, 0);
   if (savedMicrograms <= MIN_SAVING || priorityScore <= MIN_SAVING) return null;
   return {
     id: intervention.id,
@@ -64,7 +80,7 @@ function evaluate(
     effort: intervention.effort,
     reducesOwnEmissions: intervention.reducesOwnEmissions,
     savedMicrograms,
-    savedPercent: percent(savedMicrograms, baselineTotal),
+    savedPercent: percent(savedMicrograms, baseline.total),
     priorityScore,
     beneficiaries,
   };
@@ -80,11 +96,12 @@ export function buildPlan(
   forecast: DayForecast,
   catalogue: readonly Intervention[] = INTERVENTIONS,
 ): Plan {
-  const baseline = householdDose(household, forecast);
-  const baselineTotal = baseline.reduce((sum, d) => sum + d.totalMicrograms, 0);
+  const doses = householdDose(household, forecast);
+  const baselineTotal = doses.reduce((sum, dose) => sum + dose.totalMicrograms, 0);
+  const baseline: Baseline = { doses, total: baselineTotal };
   const ranked = catalogue
-    .map((intervention) => evaluate(intervention, household, forecast, baseline, baselineTotal))
+    .map((intervention) => evaluate(intervention, household, forecast, baseline))
     .filter((r): r is RankedIntervention => r !== null)
     .sort((a, b) => b.priorityScore - a.priorityScore || a.id.localeCompare(b.id));
-  return { baseline, baselineTotal, ranked };
+  return { baseline: doses, baselineTotal, ranked };
 }

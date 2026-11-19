@@ -1,17 +1,21 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import { useLocale } from "@/hooks/useLocale";
-import { formatClock } from "@/lib/format/time";
+import { useLocale } from "@/hooks";
 import type { DoseBreakdown, Household } from "@/lib/types";
 import styles from "./DayStrip.module.css";
+import { MemberStrip } from "./MemberStrip";
 
 /** Props for the 24-hour DayStrip dose visualizer. */
-export interface DayStripProps {
+interface DayStripProps {
   household: Household;
   baselineDoses: readonly DoseBreakdown[];
   currentDoses: readonly DoseBreakdown[];
   hasChangesActive: boolean;
+}
+
+/** The tallest single-hour dose in the baseline, never below 1 so an empty day does not divide by zero. */
+function tallestBaselineHour(baselineDoses: readonly DoseBreakdown[]): number {
+  return Math.max(1, ...baselineDoses.flatMap((dose) => dose.byHour));
 }
 
 /**
@@ -19,19 +23,9 @@ export interface DayStripProps {
  * Displays amber intake bars, rule grid, and saved reductions in teal.
  * Features an accessible hidden data table for screen readers.
  */
-export function DayStrip({
-  household,
-  baselineDoses,
-  currentDoses,
-  hasChangesActive,
-}: DayStripProps) {
+export function DayStrip({ household, baselineDoses, currentDoses, hasChangesActive }: DayStripProps) {
   const { t } = useLocale();
-  let globalMaxHour = 1;
-  for (const b of baselineDoses) {
-    for (const hVal of b.byHour) {
-      if (hVal > globalMaxHour) globalMaxHour = hVal;
-    }
-  }
+  const scaleMax = tallestBaselineHour(baselineDoses);
 
   return (
     <div className={styles.container} aria-labelledby="day-strip-title">
@@ -39,96 +33,16 @@ export function DayStrip({
         {t("daystrip_title")}
       </h3>
 
-      {household.members.map((member, mIdx) => {
-        const base = baselineDoses[mIdx];
-        const current = currentDoses[mIdx] ?? base;
-        const currentTotal = Math.round(current?.totalMicrograms ?? 0);
-        const baseTotal = Math.round(base?.totalMicrograms ?? 0);
-
-        let peakHour = 0;
-        let peakValue = 0;
-        current?.byHour.forEach((val, h) => {
-          if (val > peakValue) {
-            peakValue = val;
-            peakHour = h;
-          }
-        });
-
-        return (
-          <div key={member.id} className={styles.memberStrip}>
-            <div className={styles.memberHeader}>
-              <span className={styles.memberName}>{member.label}</span>
-              <span className={`${styles.memberTotal} tabular-nums`}>
-                {t("daystrip_today", { total: currentTotal.toLocaleString("en-IN") })}
-                {hasChangesActive && baseTotal > currentTotal && (
-                  <span className={styles.memberSaved}>
-                    −{(baseTotal - currentTotal).toLocaleString("en-IN")} µg
-                  </span>
-                )}
-              </span>
-            </div>
-
-            <div className={styles.barsContainer} aria-hidden="true">
-              {Array.from({ length: 24 }, (_, h) => {
-                const hourDose = current?.byHour[h] ?? 0;
-                const baseHourDose = base?.byHour[h] ?? hourDose;
-                const heightPct = Math.min(100, Math.max(3, (hourDose / globalMaxHour) * 100));
-                const savedPct = hasChangesActive && baseHourDose > hourDose
-                  ? Math.min(100 - heightPct, ((baseHourDose - hourDose) / globalMaxHour) * 100)
-                  : 0;
-
-                return (
-                  <div key={h} className={styles.barCol} title={`${formatClock(h)}: ${hourDose.toFixed(1)} µg`}>
-                    <div className={styles.stackedBar}>
-                      {savedPct > 0 && (
-                        <div
-                          className={styles.barSaved}
-                          style={{ "--h": `${savedPct}%` } as CSSProperties}
-                        />
-                      )}
-                      <div
-                        className={styles.barActive}
-                        data-peak={h === peakHour && peakValue > 0}
-                        style={{ "--h": `${heightPct}%`, ["--v" as string]: `${Math.round(heightPct)}%` } as CSSProperties}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className={styles.axisLabels} aria-hidden="true">
-              <span>12 AM</span>
-              <span>6 AM</span>
-              <span>12 PM</span>
-              <span>6 PM</span>
-              <span>11 PM</span>
-            </div>
-
-            <div className={styles.peakNotice}>
-              {t("daystrip_peak", { clock: formatClock(peakHour), val: peakValue.toFixed(1) })}
-            </div>
-
-            <table className="sr-only">
-              <caption>{t("daystrip_table_caption", { name: member.label })}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">{t("daystrip_th_hour")}</th>
-                  <th scope="col">{t("daystrip_th_dose")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from({ length: 24 }, (_, h) => (
-                  <tr key={h}>
-                    <th scope="row">{formatClock(h)}</th>
-                    <td>{(current?.byHour[h] ?? 0).toFixed(1)} µg</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
-      })}
+      {household.members.map((member, index) => (
+        <MemberStrip
+          key={member.id}
+          name={member.label}
+          baseline={baselineDoses[index]}
+          current={currentDoses[index] ?? baselineDoses[index]}
+          scaleMax={scaleMax}
+          hasChangesActive={hasChangesActive}
+        />
+      ))}
     </div>
   );
 }

@@ -1,5 +1,12 @@
+import { roundTo } from "../format";
+
+/** Web Mercator cannot show the poles; latitudes are limited to where sin(lat) stays inside this bound (about 89.2 degrees). */
+const MAX_SIN_LATITUDE = 0.9999;
+const DEGREES_PER_CIRCLE = 360;
+const HALF_CIRCLE_DEGREES = 180;
+
 /** Size of one Web Mercator tile in CSS pixels. */
-export const TILE_SIZE = 256;
+const TILE_SIZE = 256;
 
 /** Map preview geometry shared by the server proxy and the client overlay. */
 export const MAP_PREVIEW = { width: 640, height: 360, zoom: 12 } as const;
@@ -10,21 +17,21 @@ export const MAP_PREVIEW = { width: 640, height: 360, zoom: 12 } as const;
  * and the server never sees a precise home location.
  */
 export function roundForMap(lat: number, lng: number): { lat: number; lng: number } {
-  return { lat: Math.round(lat * 100) / 100, lng: Math.round(lng * 100) / 100 };
+  return { lat: roundTo(lat, 2), lng: roundTo(lng, 2) };
 }
 
 /** Converts latitude/longitude to absolute Web Mercator pixels at a zoom level. */
 export function worldPixel(lat: number, lng: number, zoom: number): { x: number; y: number } {
   const scale = TILE_SIZE * 2 ** zoom;
-  const sinLat = Math.min(Math.max(Math.sin((lat * Math.PI) / 180), -0.9999), 0.9999);
+  const sinLat = Math.min(Math.max(Math.sin((lat * Math.PI) / HALF_CIRCLE_DEGREES), -MAX_SIN_LATITUDE), MAX_SIN_LATITUDE);
   return {
-    x: ((lng + 180) / 360) * scale,
+    x: ((lng + HALF_CIRCLE_DEGREES) / DEGREES_PER_CIRCLE) * scale,
     y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale,
   };
 }
 
 /** One heatmap tile placed inside the preview, in percentages of the preview box. */
-export interface PlacedTile {
+interface PlacedTile {
   x: number;
   y: number;
   leftPct: number;

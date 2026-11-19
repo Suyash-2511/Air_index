@@ -4,7 +4,7 @@ import { createContext, type ReactNode, useContext, useEffect, useState } from "
 import { type Locale, type TranslationKey, t as translate } from "@/lib/i18n";
 
 /** Value provided by LocaleContext. */
-export interface LocaleContextValue {
+interface LocaleContextValue {
   locale: Locale;
   setLocale: (next: Locale) => void;
   toggleLocale: () => void;
@@ -42,7 +42,7 @@ export function LocaleProvider({
         }
       }
     } catch {
-      // Ignore localStorage access restrictions
+      // Storage can be blocked (private mode, disabled cookies); the language then just resets to English on reload.
     }
   }, []);
 
@@ -54,7 +54,7 @@ export function LocaleProvider({
         document.documentElement.lang = next;
       }
     } catch {
-      // Ignore localStorage write failure
+      // Same restriction on write: the choice still applies for this visit, it is only not remembered.
     }
   };
 

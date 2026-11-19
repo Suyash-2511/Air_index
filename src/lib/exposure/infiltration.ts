@@ -46,10 +46,10 @@ export const COOKING_INCREMENT: Readonly<Record<HomeSetup["cookingFuel"], number
 };
 
 /** ASSUMPTION: a working exhaust fan or chimney removes about half of cooking smoke. */
-export const EXHAUST_FAN_FACTOR = 0.5;
+const EXHAUST_FAN_FACTOR = 0.5;
 
 /** ASSUMPTION: indoor smoking adds about 30 µg/m³ to indoor air whenever someone is home. */
-export const INDOOR_SMOKING_INCREMENT = 30;
+const INDOOR_SMOKING_INCREMENT = 30;
 
 /**
  * Share of PM2.5 that still gets through a mask outdoors.

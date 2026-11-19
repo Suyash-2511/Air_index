@@ -1,11 +1,11 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import { useLocale } from "@/hooks/useLocale";
+import { useLocale } from "@/hooks";
+import { cssVars } from "../ui";
 import styles from "./PlanHeadline.module.css";
 
 /** Props for the PlanHeadline component. */
-export interface PlanHeadlineProps {
+interface PlanHeadlineProps {
   baselineTotal: number;
   currentTotal: number;
   activeCount: number;
@@ -46,7 +46,7 @@ export function PlanHeadline({
       <div className={styles.meter} aria-hidden="true">
         <span
           className={styles.meterFill}
-          style={{ "--scale": baselineTotal > 0 ? currentTotal / baselineTotal : 1 } as CSSProperties}
+          style={cssVars({ "--scale": baselineTotal > 0 ? currentTotal / baselineTotal : 1 })}
         />
       </div>
       <div className={styles.meterLabels} aria-hidden="true">

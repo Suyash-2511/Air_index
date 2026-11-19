@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useLocale } from "@/hooks/useLocale";
-import { filterHacksByCost, type HackCost, INDOOR_HACKS } from "@/lib/indoor/hacks";
+import { useLocale } from "@/hooks";
+import { filterHacksByCost, type HackCost, INDOOR_HACKS } from "@/lib/indoor";
 import type { TranslationKey } from "@/lib/i18n";
 import styles from "./IndoorHacks.module.css";
 
@@ -15,7 +15,7 @@ const COST_FILTERS: readonly { value: HackCost | "All"; labelKey: TranslationKey
 ];
 
 /** Props for the IndoorHacks card collection. */
-export interface IndoorHacksProps {
+interface IndoorHacksProps {
   onSelectVentilate?: () => void;
 }
 

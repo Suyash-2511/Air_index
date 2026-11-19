@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import type { PlanApiResponse } from "@/client/types";
-import { useLocale } from "@/hooks/useLocale";
-import { type BriefInput, buildCommunityBrief, buildReadAloudScript } from "@/lib/brief";
-import type { RoutineItem } from "@/lib/routine/build-routine";
+import { useReadAloud } from "@/hooks";
+import { useLocale } from "@/hooks";
+import { buildCommunityBrief, buildReadAloudScript } from "@/lib/brief";
+import type { RoutineItem } from "@/lib/routine";
 import type { Household } from "@/lib/types";
-import { IconCopy, IconPrint, IconShare, IconSpeaker, IconStop } from "../ui/icons";
-import { getInterventionTitle } from "./plan-sharing";
+import { IconCopy, IconPrint, IconShare, IconSpeaker, IconStop } from "../ui";
+import { buildBriefInput } from "./brief-input";
 import styles from "./PlanActions.module.css";
 
+/** How long the "copied" message stays in the live region before it is cleared. */
+const ANNOUNCEMENT_MS = 3000;
+const ACTION_ICON_SIZE = 15;
+
 /** Props for the PlanActions export and sharing bar. */
-export interface PlanActionsProps {
+interface PlanActionsProps {
   planData: PlanApiResponse;
   household: Household;
   currentTotal: number;
@@ -20,132 +25,72 @@ export interface PlanActionsProps {
   pledges?: readonly string[] | undefined;
 }
 
+interface ActionButtonProps {
+  icon: ComponentType<{ size?: number; className?: string | undefined }>;
+  label: string;
+  onClick: () => void;
+}
+
+function ActionButton({ icon: Icon, label, onClick }: ActionButtonProps) {
+  return (
+    <button type="button" onClick={onClick} className={styles.actionButton} aria-label={label}>
+      <Icon size={ACTION_ICON_SIZE} className={styles.icon} />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+/** Whether this browser can open its native share sheet; checked after mount so server and client agree. */
+function useCanShare(): boolean {
+  const [canShare, setCanShare] = useState(false);
+  useEffect(() => {
+    setCanShare(typeof navigator.share === "function");
+  }, []);
+  return canShare;
+}
+
 /**
  * Row of quiet secondary action buttons to read aloud, copy a community brief,
  * share, or print the current exposure reduction plan.
  */
-export function PlanActions({
-  planData,
-  household,
-  currentTotal,
-  routine,
-  commuteMode,
-  pledges,
-}: PlanActionsProps) {
+export function PlanActions(props: PlanActionsProps) {
   const { locale, t } = useLocale();
-  const [canSpeak, setCanSpeak] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [canShare, setCanShare] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const brief = buildBriefInput({ ...props, locale });
+  const speech = useReadAloud(() => buildReadAloudScript(brief), locale === "hi" ? "hi-IN" : "en-IN");
+  const canShare = useCanShare();
 
-  const briefInput: BriefInput = useMemo(() => {
-    return {
-      areaLabel: household.location.label,
-      date: new Date(),
-      forecast: planData.air.forecast,
-      householdMicrograms: currentTotal,
-      changes: planData.ranked.map((action) => ({
-        title: action.explanation?.title ?? getInterventionTitle(action.id),
-        savedPercent: action.savedPercent,
-        reducesOwnEmissions: action.reducesOwnEmissions,
-      })),
-      routine,
-      commuteMode,
-      pledges,
-      locale,
-    };
-  }, [household.location.label, planData, currentTotal, routine, commuteMode, pledges, locale]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) setCanSpeak(true);
-    if (typeof navigator !== "undefined" && typeof navigator.share === "function") setCanShare(true);
-    return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
-    };
-  }, []);
-
-  const handleToggleSpeech = () => {
-    if (!canSpeak || typeof window === "undefined") return;
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const text = buildReadAloudScript(briefInput);
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = locale === "hi" ? "hi-IN" : "en-IN";
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    setIsSpeaking(true);
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const handleCopy = async () => {
-    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+  const copy = async () => {
+    if (!navigator.clipboard) return;
     try {
-      const text = buildCommunityBrief(briefInput);
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(buildCommunityBrief(brief));
       setAnnouncement(t("brief_copied"));
-      setTimeout(() => setAnnouncement(""), 3000);
+      setTimeout(() => setAnnouncement(""), ANNOUNCEMENT_MS);
     } catch {
-      // Ignore clipboard error
+      // Clipboard access can be refused by the browser; the button simply does nothing then.
     }
   };
 
-  const handleShare = async () => {
-    if (typeof navigator === "undefined" || !navigator.share) return;
+  const share = async () => {
     try {
-      const text = buildCommunityBrief(briefInput);
-      await navigator.share({ title: `Air today in ${briefInput.areaLabel}`, text });
+      await navigator.share({ title: `Air today in ${brief.areaLabel}`, text: buildCommunityBrief(brief) });
     } catch {
-      // Ignore share abort
+      // Closing the share sheet rejects the promise; that is a choice, not a failure.
     }
-  };
-
-  const handlePrint = () => {
-    if (typeof window !== "undefined") window.print();
   };
 
   return (
     <div className={styles.actionsRow}>
-      {canSpeak && (
-        <button
-          type="button"
-          onClick={handleToggleSpeech}
-          className={styles.actionButton}
-          aria-label={isSpeaking ? t("stop_reading") : t("read_aloud")}
-        >
-          {isSpeaking ? (
-            <>
-              <IconStop size={15} className={styles.icon} />
-              <span>{t("stop_reading")}</span>
-            </>
-          ) : (
-            <>
-              <IconSpeaker size={15} className={styles.icon} />
-              <span>{t("read_aloud")}</span>
-            </>
-          )}
-        </button>
+      {speech.canSpeak && (
+        <ActionButton
+          icon={speech.isSpeaking ? IconStop : IconSpeaker}
+          label={speech.isSpeaking ? t("stop_reading") : t("read_aloud")}
+          onClick={speech.toggle}
+        />
       )}
-
-      <button type="button" onClick={handleCopy} className={styles.actionButton}>
-        <IconCopy size={15} className={styles.icon} />
-        <span>{t("copy_brief")}</span>
-      </button>
-
-      {canShare && (
-        <button type="button" onClick={handleShare} className={styles.actionButton}>
-          <IconShare size={15} className={styles.icon} />
-          <span>{t("share_btn")}</span>
-        </button>
-      )}
-
-      <button type="button" onClick={handlePrint} className={styles.actionButton}>
-        <IconPrint size={15} className={styles.icon} />
-        <span>{t("print_btn")}</span>
-      </button>
+      <ActionButton icon={IconCopy} label={t("copy_brief")} onClick={copy} />
+      {canShare && <ActionButton icon={IconShare} label={t("share_btn")} onClick={share} />}
+      <ActionButton icon={IconPrint} label={t("print_btn")} onClick={() => window.print()} />
 
       <div aria-live="polite" className="sr-only">
         {announcement}

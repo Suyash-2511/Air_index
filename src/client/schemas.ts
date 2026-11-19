@@ -44,7 +44,7 @@ export const intakeApiResponseSchema = z.object({
 });
 
 /** Schema for individual dose breakdown. */
-export const doseBreakdownSchema = z.object({
+const doseBreakdownSchema = z.object({
   memberId: z.string(),
   totalMicrograms: z.number(),
   byActivity: z.record(z.string(), z.number().optional()).default({}),

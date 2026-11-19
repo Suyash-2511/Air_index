@@ -1,5 +1,7 @@
+import { MILLISECONDS_PER_MINUTE, MILLISECONDS_PER_SECOND } from "../time-units";
+
 /** Outcome of checking a client request against the rate limiter. */
-export interface RateLimitResult {
+interface RateLimitResult {
   allowed: boolean;
   limit: number;
   remaining: number;
@@ -12,6 +14,10 @@ interface WindowRecord {
   windowStart: number;
 }
 
+/** Per-client limits: ordinary API calls are costly (model and provider quota), while a map draws many tiles at once. */
+const API_REQUESTS_PER_MINUTE = 60;
+const TILE_REQUESTS_PER_MINUTE = 500;
+
 /**
  * Fixed-window rate limiter per client IP address.
  * Prevents API abuse and DoS attacks by bounding request bursts.
@@ -21,9 +27,9 @@ export class RateLimiter {
   private readonly windowMs: number;
   private readonly records = new Map<string, WindowRecord>();
 
-  constructor(limit = 60, windowMs = 60000) {
+  constructor(limit = API_REQUESTS_PER_MINUTE, windowMs = MILLISECONDS_PER_MINUTE) {
     this.limit = Math.max(1, limit);
-    this.windowMs = Math.max(1000, windowMs);
+    this.windowMs = Math.max(MILLISECONDS_PER_SECOND, windowMs);
   }
 
   /**
@@ -56,7 +62,7 @@ export class RateLimiter {
     }
 
     const remainingMs = record.windowStart + this.windowMs - now;
-    const retryAfter = Math.max(1, Math.ceil(remainingMs / 1000));
+    const retryAfter = Math.max(1, Math.ceil(remainingMs / MILLISECONDS_PER_SECOND));
 
     return {
       allowed: false,
@@ -74,7 +80,7 @@ export class RateLimiter {
 }
 
 /** Global rate limiter protecting standard API routes (60 requests/minute per IP). */
-export const apiRateLimiter = new RateLimiter(60, 60000);
+export const apiRateLimiter = new RateLimiter(API_REQUESTS_PER_MINUTE, MILLISECONDS_PER_MINUTE);
 
 /** Generous rate limiter protecting map tile rendering endpoints (500 requests/minute per IP). */
-export const tileRateLimiter = new RateLimiter(500, 60000);
+export const tileRateLimiter = new RateLimiter(TILE_REQUESTS_PER_MINUTE, MILLISECONDS_PER_MINUTE);

@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLocale } from "@/hooks/useLocale";
-import { IconMoon, IconSun } from "../ui/icons";
+import { useLocale } from "@/hooks";
+import { IconMoon, IconSun } from "../ui";
 import styles from "./Masthead.module.css";
 
 /** Props for the Masthead bulletin header component. */
-export interface MastheadProps {
+interface MastheadProps {
   theme: "light" | "dark";
   onToggleTheme: () => void;
   compact: boolean;

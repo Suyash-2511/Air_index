@@ -1,19 +1,19 @@
 import { z } from "zod";
-import type { Plan } from "../interventions/rank";
-import { guardUserInput, INJECTION_GUARD_SYSTEM_INSTRUCTION } from "../security/injection-guard";
+import type { Locale } from "../i18n";
+import type { Plan } from "../interventions";
+import { guardUserInput, INJECTION_GUARD_SYSTEM_INSTRUCTION } from "../security";
 import type { Household } from "../types";
 import { generateStructured } from "./client";
 import { getInterventionTitle, groundText, stripInternalIds } from "./grounding";
 
-/** Schema validating the structured answer to a user question regarding their plan. */
-export const askResultSchema = z.object({
-  answer: z.string().min(1),
-  citedInterventionIds: z.array(z.string()),
-  answerable: z.boolean(),
-});
-export type AskResult = z.infer<typeof askResultSchema>;
+/** Structured answer to a question about the plan, with ids of the changes it relies on. */
+interface AskResult {
+  answer: string;
+  citedInterventionIds: string[];
+  answerable: boolean;
+}
 
-export const askResponseSchema: Record<string, unknown> = {
+const askResponseSchema: Record<string, unknown> = {
   type: "object",
   properties: {
     answer: { type: "string" },
@@ -23,68 +23,75 @@ export const askResponseSchema: Record<string, unknown> = {
   required: ["answer", "citedInterventions", "answerable"],
 };
 
-/** Deterministic Q&A fixture for demo mode. */
-export function getDemoAskFixture(
-  question: string,
-  plan: Plan,
-  household: Household,
-  locale: "en" | "hi" = "en",
-): AskResult {
-  const isHi = locale === "hi";
-  const lower = question.toLowerCase();
+/** What the model returns: titles of the changes it relied on, which are mapped back to ids afterwards. */
+const geminiAnswerSchema = z.object({
+  answer: z.string(),
+  citedInterventions: z.array(z.string()),
+  answerable: z.boolean(),
+});
+type GeminiAnswer = z.infer<typeof geminiAnswerSchema>;
 
-  const isOffPlan =
-    lower.includes("france") ||
-    lower.includes("weather") ||
-    lower.includes("stock") ||
-    lower.includes("capital") ||
-    lower.includes("recipe") ||
-    lower.includes("cake") ||
-    lower.includes("car");
+/** Everything one question needs, passed together so helpers stay within four parameters. */
+interface AskRequest {
+  question: string;
+  plan: Plan;
+  household: Household;
+  locale: Locale;
+}
 
-  if (isOffPlan) {
-    return {
-      answer: isHi
-        ? "यह प्रश्न आपके परिवार की वायु-गुणवत्ता योजना से संबंधित नहीं है।"
-        : "This question cannot be answered from your household's air-quality exposure plan.",
-      citedInterventionIds: [],
-      answerable: false,
-    };
-  }
+/** Topics the plan cannot speak to; the demo answer declines them. */
+const OFF_PLAN_KEYWORDS = ["france", "weather", "stock", "capital", "recipe", "cake", "car"];
 
-  const maskIntervention = plan.ranked.find((r) => r.id.includes("mask"));
+const DEMO_ANSWERS = {
+  offPlan: {
+    en: "This question cannot be answered from your household's air-quality exposure plan.",
+    hi: "यह प्रश्न आपके परिवार की वायु-गुणवत्ता योजना से संबंधित नहीं है।",
+  },
+  motherStaysIndoors: {
+    en: "The plan does not recommend a mask for Mother because her daily schedule is entirely indoors; outdoor mask protection is recommended for family members who commute.",
+    hi: "योजना में माँ के लिए मास्क की सिफारिश नहीं की गई है क्योंकि वे पूरे दिन घर के अंदर रहती हैं; यात्रा करने वाले सदस्यों के लिए बाहरी मास्क की सिफारिश की जाती है।",
+  },
+  maskHelps: {
+    en: "Yes, using a mask during outdoor exposure reduces inhaled PM2.5 significantly.",
+    hi: "हाँ, बाहर जाने पर मास्क लगाने से PM2.5 कणों की मात्रा में काफी कमी आती है।",
+  },
+  noChanges: {
+    en: "Your plan currently has no active intervention recommendations to answer this query.",
+    hi: "इस प्रश्न का उत्तर देने के लिए आपकी योजना में कोई सक्रिय उपाय नहीं है।",
+  },
+} as const;
 
-  if (lower.includes("mask") && maskIntervention) {
-    const mother = household.members.find((m) => m.label.toLowerCase().includes("mother"));
-    const isMotherIndoors = mother ? mother.windows.every((w) => w.setting === "indoor") : false;
+/** Mask advice depends on whether Mother ever goes outside, which is the case the demo is built around. */
+function demoMaskAnswer(household: Household, locale: Locale): string {
+  const mother = household.members.find((member) => member.label.toLowerCase().includes("mother"));
+  const staysIndoors = mother ? mother.windows.every((block) => block.setting === "indoor") : false;
+  return (staysIndoors ? DEMO_ANSWERS.motherStaysIndoors : DEMO_ANSWERS.maskHelps)[locale];
+}
 
-    const answer = isMotherIndoors
-      ? (isHi
-          ? "योजना में माँ के लिए मास्क की सिफारिश नहीं की गई है क्योंकि वे पूरे दिन घर के अंदर रहती हैं; यात्रा करने वाले सदस्यों के लिए बाहरी मास्क की सिफारिश की जाती है।"
-          : "The plan does not recommend a mask for Mother because her daily schedule is entirely indoors; outdoor mask protection is recommended for family members who commute.")
-      : (isHi
-          ? "हाँ, बाहर जाने पर मास्क लगाने से PM2.5 कणों की मात्रा में काफी कमी आती है।"
-          : "Yes, using a mask during outdoor exposure reduces inhaled PM2.5 significantly.");
-
-    return {
-      answer,
-      citedInterventionIds: [maskIntervention.id],
-      answerable: true,
-    };
-  }
-
+/** Falls back to naming the highest-impact change, or says there is none. */
+function demoTopChangeAnswer(plan: Plan, locale: Locale): AskResult {
   const top = plan.ranked[0];
-  return {
-    answer: top
-      ? (isHi
-          ? `आपके परिवार की योजना के अनुसार, ${getInterventionTitle(top.id)} सबसे प्रभावशाली उपाय है।`
-          : `Based on your household's plan, ${getInterventionTitle(top.id)} is your highest-impact recommendation.`)
-      : (isHi
-          ? "इस प्रश्न का उत्तर देने के लिए आपकी योजना में कोई सक्रिय उपाय नहीं है।"
-          : "Your plan currently has no active intervention recommendations to answer this query."),
-    citedInterventionIds: top ? [top.id] : [],
-    answerable: top !== undefined,
-  };
+  if (!top) return { answer: DEMO_ANSWERS.noChanges[locale], citedInterventionIds: [], answerable: false };
+  const title = getInterventionTitle(top.id);
+  const answer =
+    locale === "hi"
+      ? `आपके परिवार की योजना के अनुसार, ${title} सबसे प्रभावशाली उपाय है।`
+      : `Based on your household's plan, ${title} is your highest-impact recommendation.`;
+  return { answer, citedInterventionIds: [top.id], answerable: true };
+}
+
+/** Deterministic Q&A fixture for demo mode. */
+export function getDemoAskFixture(question: string, plan: Plan, household: Household, locale: Locale = "en"): AskResult {
+  const lower = question.toLowerCase();
+  if (OFF_PLAN_KEYWORDS.some((keyword) => lower.includes(keyword))) {
+    return { answer: DEMO_ANSWERS.offPlan[locale], citedInterventionIds: [], answerable: false };
+  }
+
+  const maskChange = plan.ranked.find((change) => change.id.includes("mask"));
+  if (lower.includes("mask") && maskChange) {
+    return { answer: demoMaskAnswer(household, locale), citedInterventionIds: [maskChange.id], answerable: true };
+  }
+  return demoTopChangeAnswer(plan, locale);
 }
 
 const ASK_SYSTEM_PROMPT = `You are Saans Household Exposure Advisor.
@@ -96,49 +103,38 @@ Rules:
 4. STRICT NUMBER GROUNDING: Do NOT invent, recalculate, or alter any numbers.
 ${INJECTION_GUARD_SYSTEM_INSTRUCTION}`;
 
-/** Answers a user query strictly using the household's computed exposure plan without exposing internal IDs. */
-export async function askQuestion(
-  question: string,
-  plan: Plan,
-  household: Household,
-  locale: "en" | "hi" = "en",
-): Promise<AskResult> {
-  const guardedQuestion = guardUserInput(question);
-
-  const memberIdToLabel = new Map(household.members.map((m) => [m.id, m.label]));
-  const titleToIdMap = new Map(plan.ranked.map((r) => [getInterventionTitle(r.id).toLowerCase(), r.id]));
-  const idToTitleMap = new Map(plan.ranked.map((r) => [r.id, getInterventionTitle(r.id)]));
-
-  const planContext = {
+/** The plan as the model sees it: human labels and rounded numbers, never internal ids. */
+function buildPlanContext({ plan, household }: AskRequest, memberLabels: ReadonlyMap<string, string>) {
+  return {
     baselineTotalUg: Math.round(plan.baselineTotal),
-    members: household.members.map((m) => ({
-      person: m.label,
-      sensitivities: m.sensitivities,
-      scheduleSummary: m.windows.map((w) => `${w.activity} (${w.setting}, ${w.startHour}:00 for ${w.durationMinutes}m)`),
+    members: household.members.map((member) => ({
+      person: member.label,
+      sensitivities: member.sensitivities,
+      scheduleSummary: member.windows.map((block) => `${block.activity} (${block.setting}, ${block.startHour}:00 for ${block.durationMinutes}m)`),
     })),
-    rankedInterventions: plan.ranked.map((r) => ({
-      title: getInterventionTitle(r.id),
-      savedUg: Math.round(r.savedMicrograms),
-      savedPercent: Math.round(r.savedPercent),
-      beneficiaries: r.beneficiaries.map((b) => memberIdToLabel.get(b.memberId) ?? "Family Member"),
+    rankedInterventions: plan.ranked.map((change) => ({
+      title: getInterventionTitle(change.id),
+      savedUg: Math.round(change.savedMicrograms),
+      savedPercent: Math.round(change.savedPercent),
+      beneficiaries: change.beneficiaries.map((beneficiary) => memberLabels.get(beneficiary.memberId) ?? "Family Member"),
     })),
   };
+}
 
-  const systemPrompt = locale === "hi"
-    ? `${ASK_SYSTEM_PROMPT}\n5. Language: Hindi (Devanagari script). Provide the answer in natural Hindi.`
-    : ASK_SYSTEM_PROMPT;
+/** Sends the guarded question and plan context to the model, or serves the demo answer in the same shape. */
+function requestAnswer(request: AskRequest, memberLabels: ReadonlyMap<string, string>): Promise<GeminiAnswer> {
+  const systemPrompt =
+    request.locale === "hi"
+      ? `${ASK_SYSTEM_PROMPT}\n5. Language: Hindi (Devanagari script). Provide the answer in natural Hindi.`
+      : ASK_SYSTEM_PROMPT;
 
-  const response = await generateStructured<{ answer: string; citedInterventions: string[]; answerable: boolean }>({
+  return generateStructured<GeminiAnswer>({
     system: systemPrompt,
-    contents: `Computed Plan Context:\n${JSON.stringify(planContext, null, 2)}\n\nUser Question:\n${guardedQuestion}`,
+    contents: `Computed Plan Context:\n${JSON.stringify(buildPlanContext(request, memberLabels), null, 2)}\n\nUser Question:\n${guardUserInput(request.question)}`,
     responseSchema: askResponseSchema,
-    zodSchema: z.object({
-      answer: z.string(),
-      citedInterventions: z.array(z.string()),
-      answerable: z.boolean(),
-    }),
+    zodSchema: geminiAnswerSchema,
     demoFixture: () => {
-      const demo = getDemoAskFixture(question, plan, household, locale);
+      const demo = getDemoAskFixture(request.question, request.plan, request.household, request.locale);
       return {
         answer: demo.answer,
         citedInterventions: demo.citedInterventionIds.map((id) => getInterventionTitle(id)),
@@ -146,26 +142,42 @@ export async function askQuestion(
       };
     },
   });
+}
 
-  const cleanAnswer = stripInternalIds(response.answer, memberIdToLabel, idToTitleMap);
+/** Maps the titles the model cited back to change ids; a question about masks always cites the mask change. */
+function resolveCitedIds(request: AskRequest, citedTitles: readonly string[]): string[] {
+  const idByTitle = new Map(request.plan.ranked.map((change) => [getInterventionTitle(change.id).toLowerCase(), change.id]));
+  const cited = new Set<string>();
+  for (const title of citedTitles) {
+    const id = idByTitle.get(title.toLowerCase().trim());
+    if (id) cited.add(id);
+  }
+
+  if (request.question.toLowerCase().includes("mask")) {
+    const maskChange = request.plan.ranked.find((change) => change.id.includes("mask"));
+    if (maskChange) cited.add(maskChange.id);
+  }
+  return Array.from(cited);
+}
+
+/** Answers a user query strictly using the household's computed exposure plan without exposing internal IDs. */
+export async function askQuestion(
+  question: string,
+  plan: Plan,
+  household: Household,
+  locale: Locale = "en",
+): Promise<AskResult> {
+  const request: AskRequest = { question, plan, household, locale };
+  const memberLabels = new Map(household.members.map((member) => [member.id, member.label]));
+  const titlesById = new Map(plan.ranked.map((change) => [change.id, getInterventionTitle(change.id)]));
+
+  const response = await requestAnswer(request, memberLabels);
+  const cleanAnswer = stripInternalIds(response.answer, memberLabels, titlesById);
   const groundedAnswer = groundText(cleanAnswer, plan);
-
-  // Map cited titles back to intervention IDs
-  const citedIds = new Set<string>();
-  for (const cited of response.citedInterventions) {
-    const matchedId = titleToIdMap.get(cited.toLowerCase().trim());
-    if (matchedId) citedIds.add(matchedId);
-  }
-
-  // Fallback: if user asked about mask and answer discussed mask, cite mask intervention
-  if (question.toLowerCase().includes("mask")) {
-    const maskItem = plan.ranked.find((r) => r.id.includes("mask"));
-    if (maskItem) citedIds.add(maskItem.id);
-  }
 
   return {
     answer: groundedAnswer.length > 0 ? groundedAnswer : cleanAnswer,
-    citedInterventionIds: Array.from(citedIds),
+    citedInterventionIds: resolveCitedIds(request, response.citedInterventions),
     answerable: response.answerable,
   };
 }

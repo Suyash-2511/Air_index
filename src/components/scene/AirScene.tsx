@@ -1,12 +1,16 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
+import { DELHI_DEMO_LOCATION } from "@/data";
+import { usePauseWhenHidden } from "@/hooks";
+import { useSceneCapabilities } from "@/hooks";
+import styles from "./AirScene.module.css";
 import { EarthGlobe } from "./earth/EarthGlobe";
 import { FitCamera } from "./FitCamera";
 import { StaticFallback } from "./StaticFallback";
-import styles from "./AirScene.module.css";
 
+/** Props for the Earth scene: the place to face, the air to show, and how the dose has changed. */
 export interface AirSceneProps {
   lat?: number;
   lng?: number;
@@ -18,26 +22,17 @@ export interface AirSceneProps {
   className?: string;
 }
 
-function checkWebGL(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    const canvas = document.createElement("canvas");
-    return Boolean(
-      window.WebGLRenderingContext &&
-        (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
-    );
-  } catch {
-    return false;
-  }
-}
+/** Pixel ratio range: sharp on retina screens without paying for a full 3x render. */
+const PIXEL_RATIO: [number, number] = [1, 1.5];
+const CAMERA: { position: [number, number, number]; fov: number } = { position: [0, 0, 3.4], fov: 45 };
 
 /**
  * Three.js Earth centrepiece: spins on the landing page and turns to face the chosen city.
  * Automatically handles WebGL support, reduced motion, mobile concurrency, and offscreen pausing.
  */
 export function AirScene({
-  lat = 28.6139,
-  lng = 77.209,
+  lat = DELHI_DEMO_LOCATION.lat,
+  lng = DELHI_DEMO_LOCATION.lng,
   cityName = "New Delhi",
   pm25,
   density,
@@ -45,83 +40,23 @@ export function AirScene({
   className = "",
 }: AirSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [canRender3D, setCanRender3D] = useState<boolean | null>(null);
-  const [isPaused, setIsPaused] = useState(false);
-  const [isTouch, setIsTouch] = useState(false);
+  const { canRender3D, isTouch } = useSceneCapabilities();
+  const isPaused = usePauseWhenHidden(containerRef);
 
-  useEffect(() => {
-    const hasMedia = typeof window.matchMedia === "function";
-    const prefersReduced = hasMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const webglSupported = checkWebGL();
-    const touch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-
-    setIsTouch(touch);
-    setCanRender3D(webglSupported && !prefersReduced);
-
-    if (hasMedia) {
-      const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-      const handleMotionChange = (e: MediaQueryListEvent) => {
-        setCanRender3D(webglSupported && !e.matches);
-      };
-      motionQuery.addEventListener("change", handleMotionChange);
-      return () => motionQuery.removeEventListener("change", handleMotionChange);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleVisibility = () => {
-      setIsPaused(document.hidden);
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    let observer: IntersectionObserver | null = null;
-    if (typeof IntersectionObserver !== "undefined" && containerRef.current) {
-      observer = new IntersectionObserver((entries) => {
-        for (const entry of entries) {
-          setIsPaused(!entry.isIntersecting);
-        }
-      });
-      observer.observe(containerRef.current);
-    }
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      observer?.disconnect();
-    };
-  }, []);
-
-  // SSR or fallback when WebGL is absent or reduced motion is requested
-  if (canRender3D === false || canRender3D === null) {
-    return (
-      <StaticFallback
-        pm25={pm25}
-        cityName={cityName}
-        className={className}
-      />
-    );
-  }
+  // The still picture covers server rendering, missing WebGL and reduced motion.
+  if (!canRender3D) return <StaticFallback pm25={pm25} cityName={cityName} className={className} />;
 
   return (
-    <div
-      ref={containerRef}
-      className={`${styles.sceneWrapper} ${className ?? ""}`.trim()}
-      aria-hidden="true"
-    >
+    <div ref={containerRef} className={`${styles.sceneWrapper} ${className}`.trim()} aria-hidden="true">
       <Canvas
         frameloop={isPaused ? "never" : "always"}
-        dpr={[1, 1.5]}
-        camera={{ position: [0, 0, 3.4], fov: 45 }}
+        dpr={PIXEL_RATIO}
+        camera={CAMERA}
         gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
       >
         <ambientLight intensity={0.2} color="#FFFFFF" />
         <FitCamera />
-        <EarthGlobe
-          lat={lat}
-          lng={lng}
-          density={density}
-          isTouch={isTouch}
-          focused={focused}
-        />
+        <EarthGlobe lat={lat} lng={lng} density={density} isTouch={isTouch} focused={focused} />
       </Canvas>
     </div>
   );

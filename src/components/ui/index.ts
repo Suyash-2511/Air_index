@@ -1,18 +1,16 @@
-export { Combobox, type ComboboxProps } from "./Combobox";
+export { Combobox } from "./Combobox";
 export {
-  IconSun,
-  IconMoon,
-  IconCheck,
-  IconCross,
   IconArrowRight,
-  IconArrowLeft,
+  IconCheck,
+  IconCopy,
+  IconCross,
   IconLocation,
-  IconSearch,
-  IconPin,
+  IconMoon,
+  IconPrint,
+  IconShare,
   IconSpeaker,
   IconStop,
-  IconCopy,
-  IconShare,
-  IconPrint,
-  type IconProps,
+  IconSun,
 } from "./icons";
+export { cssVars } from "./css-vars";
+export { Select } from "./Select";

@@ -19,8 +19,9 @@ export function t(
   key: TranslationKey | string,
   params?: Record<string, string | number | undefined>,
 ): string {
-  const dict = DICTIONARIES[locale] || EN_TRANSLATIONS;
-  let text = (dict as Record<string, string>)[key] || (EN_TRANSLATIONS as Record<string, string>)[key] || key;
+  const dict: Record<string, string> = DICTIONARIES[locale] || EN_TRANSLATIONS;
+  const english: Record<string, string> = EN_TRANSLATIONS;
+  let text = dict[key] || english[key] || key;
 
   if (params) {
     for (const [k, v] of Object.entries(params)) {

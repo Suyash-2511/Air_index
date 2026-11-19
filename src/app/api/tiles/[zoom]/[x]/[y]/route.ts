@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getHeatmapTile } from "@/lib/air/heatmap";
-import { enforceRateLimit, getClientIp, jsonError } from "@/lib/http/route-helpers";
-import { tileRateLimiter } from "@/lib/security/rate-limit";
+import { getHeatmapTile } from "@/lib/air";
+import { enforceRateLimit, getClientIp, jsonError } from "@/lib/http";
+import { HTTP_STATUS, tileRateLimiter } from "@/lib/security";
 
 interface RouteParams {
   params: Promise<{
@@ -24,7 +24,7 @@ export async function GET(request: Request, { params }: RouteParams): Promise<Re
     const y = parseInt(resolvedParams.y, 10);
 
     if (Number.isNaN(zoom) || Number.isNaN(x) || Number.isNaN(y)) {
-      return NextResponse.json({ error: "Tile coordinates must be integers." }, { status: 400 });
+      return NextResponse.json({ error: "Tile coordinates must be integers." }, { status: HTTP_STATUS.BAD_REQUEST });
     }
 
     const tile = await getHeatmapTile(zoom, x, y);

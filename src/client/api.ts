@@ -16,10 +16,22 @@ import type {
   PlanApiResponse,
 } from "./types";
 
-async function readError(res: Response, fallback: string): Promise<Error> {
-  const json = await res.json().catch(() => ({}));
+/** A failed call to this app's own API; `message` is safe to show to the visitor. */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+async function readError(res: Response, fallback: string): Promise<ApiError> {
+  // An error page that is not JSON still deserves the fallback message, so a parse failure is not an error here.
+  const json: unknown = await res.json().catch(() => ({}));
   const parsed = errorResponseSchema.safeParse(json);
-  return new Error(parsed.success && parsed.data.error ? parsed.data.error : fallback);
+  return new ApiError(res.status, parsed.success && parsed.data.error ? parsed.data.error : fallback);
 }
 
 function postJson(url: string, body: unknown): Promise<Response> {
@@ -67,11 +79,7 @@ export async function submitIntake(
   text: string,
   location: Location,
 ): Promise<IntakeApiResponse> {
-  const res = await fetch("/api/intake", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, location }),
-  });
+  const res = await postJson("/api/intake", { text, location });
   if (!res.ok) {
     throw await readError(res, "Failed to parse household intake");
   }
@@ -83,11 +91,7 @@ export async function computePlan(
   household: Household,
   locale: "en" | "hi" = "en",
 ): Promise<PlanApiResponse> {
-  const res = await fetch("/api/plan", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ household, locale }),
-  });
+  const res = await postJson("/api/plan", { household, locale });
   if (!res.ok) {
     throw await readError(res, "Failed to compute exposure plan");
   }
@@ -100,17 +104,14 @@ export async function askPlanQuestion(
   household: Household,
   locale: "en" | "hi" = "en",
 ): Promise<AskApiResponse> {
-  const res = await fetch("/api/ask", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, household, locale }),
-  });
+  const res = await postJson("/api/ask", { question, household, locale });
   if (!res.ok) {
     throw await readError(res, "Failed to answer plan question");
   }
   return askApiResponseSchema.parse(await res.json());
 }
 
+/** The outdoor reading the landing page shows: PM2.5 and, when the provider has it, the AQI summary. */
 export interface CurrentAirReading {
   pm25: number;
   aqi?: {
@@ -123,11 +124,7 @@ export interface CurrentAirReading {
 /** Fetches current air reading including PM2.5 and AQI summary for landing display. */
 export async function fetchCurrentAir(lat: number, lng: number): Promise<CurrentAirReading | undefined> {
   try {
-    const res = await fetch("/api/air", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lat, lng }),
-    });
+    const res = await postJson("/api/air", { lat, lng });
     if (!res.ok) return undefined;
     const parsed = airApiResponseSchema.safeParse(await res.json());
     if (!parsed.success) return undefined;
@@ -138,6 +135,7 @@ export async function fetchCurrentAir(lat: number, lng: number): Promise<Current
       ...(current.aqi && { aqi: current.aqi }),
     };
   } catch {
+    // The landing reading is decoration: offline or a failed call just means no number is shown.
     return undefined;
   }
 }

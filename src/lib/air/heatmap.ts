@@ -1,23 +1,23 @@
 import zlib from "node:zlib";
 import { tileCache, tileKey } from "../cache";
 import { getGoogleMapsApiKey, hasAirKey } from "../env";
-import { googleBinary } from "../google/http";
-import { AppError } from "../security/errors";
+import { googleBinary } from "../google";
+import { AppError, HTTP_STATUS } from "../security";
 
 /** Map type used for Universal Air Quality Index heatmap layers. */
-export const UNIVERSAL_AQI_MAP_TYPE = "UAQI_RED_GREEN";
+const UNIVERSAL_AQI_MAP_TYPE = "UAQI_RED_GREEN";
 
 /** Validates tile coordinate numbers against map zoom limits. */
 export function validateTileCoords(zoom: number, x: number, y: number): void {
   if (!Number.isInteger(zoom) || zoom < 0 || zoom > 16) {
-    throw new AppError(400, "Invalid zoom level. Must be an integer between 0 and 16.");
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, "Invalid zoom level. Must be an integer between 0 and 16.");
   }
   const maxIndex = 2 ** zoom - 1;
   if (!Number.isInteger(x) || x < 0 || x > maxIndex) {
-    throw new AppError(400, `Invalid x coordinate. Must be between 0 and ${maxIndex} for zoom ${zoom}.`);
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, `Invalid x coordinate. Must be between 0 and ${maxIndex} for zoom ${zoom}.`);
   }
   if (!Number.isInteger(y) || y < 0 || y > maxIndex) {
-    throw new AppError(400, `Invalid y coordinate. Must be between 0 and ${maxIndex} for zoom ${zoom}.`);
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, `Invalid y coordinate. Must be between 0 and ${maxIndex} for zoom ${zoom}.`);
   }
 }
 

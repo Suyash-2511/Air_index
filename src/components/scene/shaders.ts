@@ -16,6 +16,7 @@ export const earthVertexShader = `
   }
 `;
 
+/** Fragment shader for the planet: blends the day and night textures across the terminator and lights the cities on the dark side. */
 export const earthFragmentShader = `
   uniform sampler2D uDayTexture;
   uniform sampler2D uNightTexture;
@@ -47,6 +48,7 @@ export const earthFragmentShader = `
   }
 `;
 
+/** Vertex shader for the atmosphere shell; passes the surface normal on so the rim can be lit by view angle. */
 export const atmosphereVertexShader = `
   varying vec3 vNormal;
   varying vec3 vViewPosition;
@@ -59,6 +61,7 @@ export const atmosphereVertexShader = `
   }
 `;
 
+/** Fragment shader for the atmosphere: a Fresnel rim that glows brighter toward the edge, coloured by the household dose. */
 export const atmosphereFragmentShader = `
   uniform vec3 uRimColor;
   uniform float uIntensity;

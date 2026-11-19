@@ -1,13 +1,12 @@
-import type { RoutineItem } from "./build-routine";
+import type { RoutineItem } from "./routine-types";
 
-function formatCalendarDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const h = String(d.getHours()).padStart(2, "0");
-  const min = String(d.getMinutes()).padStart(2, "0");
-  const s = String(d.getSeconds()).padStart(2, "0");
-  return `${y}${m}${day}T${h}${min}${s}`;
+const twoDigits = (value: number): string => String(value).padStart(2, "0");
+
+/** Google Calendar's compact local timestamp, for example 20260315T083000. */
+function formatCalendarDate(date: Date): string {
+  const day = `${date.getFullYear()}${twoDigits(date.getMonth() + 1)}${twoDigits(date.getDate())}`;
+  const time = `${twoDigits(date.getHours())}${twoDigits(date.getMinutes())}${twoDigits(date.getSeconds())}`;
+  return `${day}T${time}`;
 }
 
 /**
