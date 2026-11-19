@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PlanApiResponse } from "@/client/types";
 import { useCountUp } from "@/hooks/useCountUp";
+import { useLocale } from "@/hooks/useLocale";
 import { combineInterventions } from "@/lib/interventions/combine";
 import { buildRoutine } from "@/lib/routine/build-routine";
 import type { DayForecast, DoseBreakdown, Household } from "@/lib/types";
-import { AirToday, AreaMap, AskPanel, ChangeCard, DayStrip, PlanActions, RoutineTimeline } from "../plan";
+import { CommunityPledge } from "../community";
+import { CommuteCompare } from "../commute";
+import { AirToday, AreaMap, AskPanel, ChangeCard, DayStrip, IndoorAirSection, PlanActions, RoutineTimeline } from "../plan";
 import { PlanHeadline } from "./PlanHeadline";
 import styles from "./PlanStep.module.css";
 
@@ -20,12 +23,17 @@ export interface PlanStepProps {
 
 /**
  * Step 3: Your plan.
- * Displays the asymmetric layout with count-up headline reveal,
- * time-ordered routine timeline, ranked glass change cards with instant
- * zero-fetch recomputation, and 24h day strip in sync with the 3D smog sphere.
+ * Displays the asymmetric layout with headline reveal, time-ordered routine timeline,
+ * indoor air guide, ranked change cards, commute comparison, community pledges, and map.
  */
 export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStepProps) {
+  const { t } = useLocale();
   const [activeIds, setActiveIds] = useState<string[]>([]);
+  const [commuteMode, setCommuteMode] = useState<string | undefined>();
+  const [pledges, setPledges] = useState<readonly string[]>([
+    "No burning of dry leaves, waste, or plastic",
+    "Run the chimney or exhaust fan while cooking",
+  ]);
 
   const forecastMap: DayForecast = useMemo(
     () => new Map(planData.air.forecast.map((f) => [f.hour, f.pm25])),
@@ -52,9 +60,15 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
   const currentSavedUg = baselineTotal - currentTotal;
   const currentSavedPct = baselineTotal > 0 ? Math.round((currentSavedUg / baselineTotal) * 100) : 0;
 
-  const routineItems = useMemo(() => {
-    return buildRoutine(household, planData.air.forecast, planData.ranked);
-  }, [household, planData.air.forecast, planData.ranked]);
+  const routineItems = useMemo(
+    () => buildRoutine(household, planData.air.forecast, planData.ranked),
+    [household, planData.air.forecast, planData.ranked],
+  );
+
+  const hasCommute = useMemo(
+    () => household.members.some((m) => m.windows.some((w) => w.activity.startsWith("commute_"))),
+    [household.members],
+  );
 
   useEffect(() => {
     onDoseChange?.(currentTotal, baselineTotal);
@@ -67,7 +81,7 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
   return (
     <div className={styles.layout}>
       <button type="button" onClick={onBack} className={styles.backButton}>
-        ← Edit household
+        {t("plan_back_btn")}
       </button>
 
       <PlanHeadline
@@ -90,6 +104,8 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
           household={household}
           currentTotal={currentTotal}
           routine={routineItems}
+          commuteMode={commuteMode}
+          pledges={pledges}
         />
       </div>
 
@@ -102,13 +118,15 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
           onToggleIntervention={handleToggle}
         />
 
+        <IndoorAirSection outdoorPm25={planData.air.current.pm25} />
+
         <section className={styles.cardsSection} aria-labelledby="ranked-changes-title">
           <h3 id="ranked-changes-title" className={styles.cardsTitle}>
-            Changes, ranked by what they save ({planData.ranked.length})
+            {t("plan_changes_heading", { count: planData.ranked.length })}
           </h3>
           {planData.ranked.length === 0 ? (
             <p className={styles.emptyCards}>
-              No effective changes identified for this routine. Your routine already minimizes outdoor exposure.
+              {t("plan_no_effective_changes")}
             </p>
           ) : (
             planData.ranked.map((action, i) => (
@@ -122,6 +140,20 @@ export function PlanStep({ planData, household, onBack, onDoseChange }: PlanStep
             ))
           )}
         </section>
+
+        {hasCommute && (
+          <CommuteCompare
+            outdoorPm25={planData.air.current.pm25}
+            activeInterventionIds={activeIds}
+            onApplyIntervention={(id) => handleToggle(id, true)}
+            onSelectMode={(m) => setCommuteMode(m.label)}
+          />
+        )}
+
+        <CommunityPledge
+          areaLabel={household.location.label}
+          onPledgesChanged={(p) => setPledges(p)}
+        />
       </div>
 
       <div className={styles.rightColumn}>

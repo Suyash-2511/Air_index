@@ -118,4 +118,25 @@ describe("brief", () => {
     const script = buildReadAloudScript(input);
     expect(script).toContain("At 2 PM, open windows for 15 minutes.");
   });
+
+  it("supports Hindi locale, commute mode and community pledges in brief and script", () => {
+    const input: BriefInput = {
+      areaLabel: "दक्षिण दिल्ली",
+      date: dummyDate,
+      forecast: [{ hour: 8, pm25: 180 }, { hour: 15, pm25: 50 }],
+      householdMicrograms: 250,
+      changes: [{ title: "बेडरूम में प्यूरीफायर चलाएं", savedPercent: 30, reducesOwnEmissions: false }],
+      commuteMode: "मेट्रो ट्रेन",
+      pledges: ["कचरा या पत्ते न जलाएं"],
+      locale: "hi",
+    };
+
+    const brief = buildCommunityBrief(input);
+    expect(brief).toContain("दक्षिण दिल्ली में आज की हवा");
+    expect(brief).toContain("चुनी गई यात्रा: मेट्रो ट्रेन");
+    expect(brief).toContain("लिए गए स्वच्छ हवा संकल्प:");
+
+    const script = buildReadAloudScript(input);
+    expect(script).toContain("माइक्रोग्राम प्रदूषक कण सांस में लेगा");
+  });
 });

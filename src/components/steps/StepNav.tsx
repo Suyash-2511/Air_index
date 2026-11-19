@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale } from "@/hooks/useLocale";
 import { IconCheck } from "../ui/icons";
 import styles from "./StepNav.module.css";
 
@@ -11,24 +12,28 @@ export interface StepNavProps {
   currentStep: StepNumber;
 }
 
-const STEPS = [
-  { step: 1, label: "Where are you?" },
-  { step: 2, label: "Who lives here?" },
-  { step: 3, label: "Your plan" },
-] as const;
-
 /**
  * Accessible step progress indicator with aria-current marking the active stage.
  * Uses 1.5px stroke check icon on completed steps without emojis.
  */
 export function StepNav({ currentStep }: StepNavProps) {
+  const { t } = useLocale();
+
+  const steps = [
+    { step: 1, label: t("step1_nav") },
+    { step: 2, label: t("step2_nav") },
+    { step: 3, label: t("step3_nav") },
+  ] as const;
+
+  const currentLabel = steps[currentStep - 1]?.label ?? "";
+
   return (
-    <nav className={styles.nav} aria-label="Planning progress">
+    <nav className={styles.nav} aria-label={t("planning_progress")}>
       <div className="sr-only" aria-live="polite">
-        Step {currentStep} of 3: {STEPS[currentStep - 1]?.label}
+        {t("step_progress_announcement", { current: currentStep, label: currentLabel })}
       </div>
       <ol className={styles.stepList}>
-        {STEPS.map((s, idx) => {
+        {steps.map((s, idx) => {
           const isActive = s.step === currentStep;
           const isCompleted = s.step < currentStep;
           const statusClass = isActive
@@ -47,7 +52,7 @@ export function StepNav({ currentStep }: StepNavProps) {
                 {isCompleted ? <IconCheck size={12} /> : s.step}
               </span>
               <span>{s.label}</span>
-              {idx < STEPS.length - 1 && <span className={styles.separator} aria-hidden="true">/</span>}
+              {idx < steps.length - 1 && <span className={styles.separator} aria-hidden="true">/</span>}
             </li>
           );
         })}

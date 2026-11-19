@@ -3,4 +3,7 @@ export * from "./landing";
 export * from "./household";
 export * from "./plan";
 export * from "./steps";
+export * from "./indoor";
+export * from "./commute";
+export * from "./community";
 export * from "./labels";

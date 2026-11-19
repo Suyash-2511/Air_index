@@ -10,7 +10,7 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/ban-ts-comment": "error",
-      "max-lines": ["error", { max: 200, skipBlankLines: true, skipComments: true }],
+      "max-lines": ["error", { max: 180, skipBlankLines: true, skipComments: true }],
       eqeqeq: ["error", "always"],
       "no-console": ["error", { allow: ["warn", "error"] }],
     },

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { PlanApiResponse } from "@/client/types";
+import { useLocale } from "@/hooks/useLocale";
 import { type BriefInput, buildCommunityBrief, buildReadAloudScript } from "@/lib/brief";
 import type { RoutineItem } from "@/lib/routine/build-routine";
 import type { Household } from "@/lib/types";
@@ -15,13 +16,23 @@ export interface PlanActionsProps {
   household: Household;
   currentTotal: number;
   routine?: readonly RoutineItem[] | undefined;
+  commuteMode?: string | undefined;
+  pledges?: readonly string[] | undefined;
 }
 
 /**
  * Row of quiet secondary action buttons to read aloud, copy a community brief,
  * share, or print the current exposure reduction plan.
  */
-export function PlanActions({ planData, household, currentTotal, routine }: PlanActionsProps) {
+export function PlanActions({
+  planData,
+  household,
+  currentTotal,
+  routine,
+  commuteMode,
+  pledges,
+}: PlanActionsProps) {
+  const { locale, t } = useLocale();
   const [canSpeak, setCanSpeak] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [canShare, setCanShare] = useState(false);
@@ -39,20 +50,17 @@ export function PlanActions({ planData, household, currentTotal, routine }: Plan
         reducesOwnEmissions: action.reducesOwnEmissions,
       })),
       routine,
+      commuteMode,
+      pledges,
+      locale,
     };
-  }, [household.location.label, planData, currentTotal, routine]);
+  }, [household.location.label, planData, currentTotal, routine, commuteMode, pledges, locale]);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      setCanSpeak(true);
-    }
-    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-      setCanShare(true);
-    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) setCanSpeak(true);
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") setCanShare(true);
     return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
+      if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
     };
   }, []);
 
@@ -66,7 +74,7 @@ export function PlanActions({ planData, household, currentTotal, routine }: Plan
     window.speechSynthesis.cancel();
     const text = buildReadAloudScript(briefInput);
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-IN";
+    utterance.lang = locale === "hi" ? "hi-IN" : "en-IN";
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     setIsSpeaking(true);
@@ -78,7 +86,7 @@ export function PlanActions({ planData, household, currentTotal, routine }: Plan
     try {
       const text = buildCommunityBrief(briefInput);
       await navigator.clipboard.writeText(text);
-      setAnnouncement("Brief copied");
+      setAnnouncement(t("brief_copied"));
       setTimeout(() => setAnnouncement(""), 3000);
     } catch {
       // Ignore clipboard error
@@ -89,19 +97,14 @@ export function PlanActions({ planData, household, currentTotal, routine }: Plan
     if (typeof navigator === "undefined" || !navigator.share) return;
     try {
       const text = buildCommunityBrief(briefInput);
-      await navigator.share({
-        title: `Air today in ${briefInput.areaLabel}`,
-        text,
-      });
+      await navigator.share({ title: `Air today in ${briefInput.areaLabel}`, text });
     } catch {
       // Ignore share abort
     }
   };
 
   const handlePrint = () => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
+    if (typeof window !== "undefined") window.print();
   };
 
   return (
@@ -111,49 +114,37 @@ export function PlanActions({ planData, household, currentTotal, routine }: Plan
           type="button"
           onClick={handleToggleSpeech}
           className={styles.actionButton}
-          aria-label={isSpeaking ? "Stop read aloud" : "Read aloud"}
+          aria-label={isSpeaking ? t("stop_reading") : t("read_aloud")}
         >
           {isSpeaking ? (
             <>
               <IconStop size={15} className={styles.icon} />
-              <span>Stop</span>
+              <span>{t("stop_reading")}</span>
             </>
           ) : (
             <>
               <IconSpeaker size={15} className={styles.icon} />
-              <span>Read aloud</span>
+              <span>{t("read_aloud")}</span>
             </>
           )}
         </button>
       )}
 
-      <button
-        type="button"
-        onClick={handleCopy}
-        className={styles.actionButton}
-      >
+      <button type="button" onClick={handleCopy} className={styles.actionButton}>
         <IconCopy size={15} className={styles.icon} />
-        <span>Copy community brief</span>
+        <span>{t("copy_brief")}</span>
       </button>
 
       {canShare && (
-        <button
-          type="button"
-          onClick={handleShare}
-          className={styles.actionButton}
-        >
+        <button type="button" onClick={handleShare} className={styles.actionButton}>
           <IconShare size={15} className={styles.icon} />
-          <span>Share</span>
+          <span>{t("share_btn")}</span>
         </button>
       )}
 
-      <button
-        type="button"
-        onClick={handlePrint}
-        className={styles.actionButton}
-      >
+      <button type="button" onClick={handlePrint} className={styles.actionButton}>
         <IconPrint size={15} className={styles.icon} />
-        <span>Print plan</span>
+        <span>{t("print_btn")}</span>
       </button>
 
       <div aria-live="polite" className="sr-only">

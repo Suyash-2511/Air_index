@@ -79,4 +79,10 @@ describe("Plan Ask Advisor", () => {
     expect(res.citedInterventionIds).toHaveLength(0);
     expect(res.answer).toContain("cannot be answered");
   });
+
+  it("demo fixture supports Hindi locale", () => {
+    const res = getDemoAskFixture("Should my mother use a mask?", dummyPlan, dummyHousehold, "hi");
+    expect(res.answerable).toBe(true);
+    expect(res.answer).toContain("माँ");
+  });
 });

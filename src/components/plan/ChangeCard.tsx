@@ -2,6 +2,7 @@
 
 import { useId, useState, type CSSProperties } from "react";
 import type { RankedAction } from "@/client/types";
+import { useLocale } from "@/hooks/useLocale";
 import { toSentenceCase } from "@/components/labels";
 import styles from "./ChangeCard.module.css";
 
@@ -14,18 +15,13 @@ export interface ChangeCardProps {
   rank?: number;
 }
 
-function formatEffort(effort: RankedAction["effort"]): string {
-  if (effort === "free") return "Free";
-  if (effort === "low_cost") return "Low cost";
-  return "Investment";
-}
-
 /**
  * Ranked intervention card displaying physical savings, an accessible switch toggle,
  * and grounded plain-language explanations. Toggling this switch recomputes household
  * exposure in real time with zero network requests.
  */
 export function ChangeCard({ action, isActive, onToggle, rank }: ChangeCardProps) {
+  const { t } = useLocale();
   const [isExpanded, setIsExpanded] = useState(false);
   const switchId = useId();
   const detailsId = useId();
@@ -33,6 +29,12 @@ export function ChangeCard({ action, isActive, onToggle, rank }: ChangeCardProps
   const title = toSentenceCase(action.explanation?.title ?? action.id.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()));
   const savedUg = Math.round(action.savedMicrograms);
   const savedPct = Math.round(action.savedPercent);
+
+  const effortText = action.effort === "free"
+    ? t("effort_free")
+    : action.effort === "low_cost"
+      ? t("effort_low_cost")
+      : t("effort_investment");
 
   return (
     <article className={`${styles.card} ${isActive ? styles.cardActive : ""}`}>
@@ -43,9 +45,9 @@ export function ChangeCard({ action, isActive, onToggle, rank }: ChangeCardProps
         <div className={styles.titleArea}>
           <h4 className={styles.title}>{title}</h4>
           <div className={styles.badges}>
-            <span className={styles.effortBadge} data-effort={action.effort}>{formatEffort(action.effort)}</span>
+            <span className={styles.effortBadge} data-effort={action.effort}>{effortText}</span>
             <span className={`${styles.savingsText} tabular-nums`}>
-              −{savedPct}% · {savedUg.toLocaleString("en-IN")} µg less
+              {t("change_savings", { pct: savedPct, ug: savedUg.toLocaleString("en-IN") })}
             </span>
           </div>
         </div>
@@ -55,7 +57,7 @@ export function ChangeCard({ action, isActive, onToggle, rank }: ChangeCardProps
           type="button"
           role="switch"
           aria-checked={isActive}
-          aria-label={`Toggle ${title}`}
+          aria-label={t("change_toggle_aria", { title })}
           onClick={() => onToggle(action.id, !isActive)}
           className={styles.switchButton}
         >
@@ -76,7 +78,7 @@ export function ChangeCard({ action, isActive, onToggle, rank }: ChangeCardProps
             onClick={() => setIsExpanded((prev) => !prev)}
             className={styles.expandButton}
           >
-            {isExpanded ? "Hide details ↑" : "How to do this ↓"}
+            {isExpanded ? t("change_hide_details") : t("change_show_details")}
           </button>
 
           {isExpanded && (
@@ -91,7 +93,7 @@ export function ChangeCard({ action, isActive, onToggle, rank }: ChangeCardProps
               )}
               {action.reducesOwnEmissions && action.explanation.sustainableAlternative && (
                 <div className={styles.sustainableBox}>
-                  <strong>Clean energy note:</strong> {action.explanation.sustainableAlternative}
+                  <strong>{t("change_clean_energy_note")}</strong> {action.explanation.sustainableAlternative}
                 </div>
               )}
             </div>

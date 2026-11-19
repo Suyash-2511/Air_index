@@ -1,6 +1,7 @@
 "use client";
 
 import type { Location } from "@/lib/types";
+import { useLocale } from "@/hooks/useLocale";
 import { useLocationSearch, DELHI_DEMO_LOCATION } from "@/hooks/useLocationSearch";
 import { Combobox } from "../ui/Combobox";
 import { IconArrowRight, IconCheck, IconLocation } from "../ui/icons";
@@ -22,6 +23,7 @@ export interface WhereStepProps {
  * or the one-click New Delhi sample demo.
  */
 export function WhereStep({ initialLocation, liveLocation, onLocationConfirmed }: WhereStepProps) {
+  const { t } = useLocale();
   const {
     query,
     selectedLocation,
@@ -39,25 +41,24 @@ export function WhereStep({ initialLocation, liveLocation, onLocationConfirmed }
 
   return (
     <section className={styles.stepContainer} aria-labelledby="step-where-heading">
-      <p className={styles.kicker}>Entry 01 · Area</p>
+      <p className={styles.kicker}>{t("where_kicker")}</p>
       <h2 id="step-where-heading" className={styles.heading} tabIndex={-1}>
-        Where are you?
+        {t("where_heading")}
       </h2>
       <p className={styles.description}>
-        Saans starts from your live location. Search to plan for any other
-        area, such as a relative's home or your workplace.
+        {t("where_description")}
       </p>
 
       <div className={styles.searchSection}>
-        <span className={styles.label} aria-hidden="true">City, neighbourhood or PIN code</span>
+        <span className={styles.label} aria-hidden="true">{t("where_search_label")}</span>
         <Combobox
-          label="Search location in India"
+          label={t("where_combobox_label")}
           value={query}
           onChange={handleQueryChange}
           onSelect={handleSelectSuggestion}
           suggestions={suggestions}
           loading={loading}
-          placeholder="Try College Road, Nashik or Indiranagar, Bengaluru"
+          placeholder={t("where_placeholder")}
           error={error}
           noResultsFor={emptyFor === query ? emptyFor : undefined}
         />
@@ -71,7 +72,7 @@ export function WhereStep({ initialLocation, liveLocation, onLocationConfirmed }
           className={styles.buttonSecondary}
         >
           <IconLocation size={16} />
-          {geoLoading ? "Finding you…" : "Use my location"}
+          {geoLoading ? t("where_finding_you") : t("where_use_my_location")}
         </button>
 
         <button
@@ -79,7 +80,7 @@ export function WhereStep({ initialLocation, liveLocation, onLocationConfirmed }
           onClick={handleSampleHousehold}
           className={styles.buttonLink}
         >
-          Try a sample household (Delhi)
+          {t("where_sample_household")}
         </button>
       </div>
 
@@ -87,7 +88,7 @@ export function WhereStep({ initialLocation, liveLocation, onLocationConfirmed }
         <div className={styles.selectedBadge} role="status">
           <span className={styles.selectedIcon} aria-hidden="true"><IconCheck size={14} /></span>
           <span>
-            <span className={styles.selectedHint}>{isLive ? "Planning for · your live location" : "Planning for"}</span>
+            <span className={styles.selectedHint}>{isLive ? t("where_planning_live") : t("where_planning_for")}</span>
             <span className={styles.selectedLabel}>{selectedLocation.label}</span>
           </span>
         </div>
@@ -99,7 +100,7 @@ export function WhereStep({ initialLocation, liveLocation, onLocationConfirmed }
         onClick={() => selectedLocation && onLocationConfirmed(selectedLocation)}
         className={styles.buttonPrimary}
       >
-        <span>Continue to household</span>
+        <span>{t("where_continue")}</span>
         <IconArrowRight size={16} />
       </button>
     </section>

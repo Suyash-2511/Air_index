@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useLocale } from "@/hooks/useLocale";
 import { formatClock } from "@/lib/format/time";
 import type { DoseBreakdown, Household } from "@/lib/types";
 import styles from "./DayStrip.module.css";
@@ -24,6 +25,7 @@ export function DayStrip({
   currentDoses,
   hasChangesActive,
 }: DayStripProps) {
+  const { t } = useLocale();
   let globalMaxHour = 1;
   for (const b of baselineDoses) {
     for (const hVal of b.byHour) {
@@ -34,7 +36,7 @@ export function DayStrip({
   return (
     <div className={styles.container} aria-labelledby="day-strip-title">
       <h3 id="day-strip-title" className={styles.title}>
-        Your household, hour by hour
+        {t("daystrip_title")}
       </h3>
 
       {household.members.map((member, mIdx) => {
@@ -57,7 +59,7 @@ export function DayStrip({
             <div className={styles.memberHeader}>
               <span className={styles.memberName}>{member.label}</span>
               <span className={`${styles.memberTotal} tabular-nums`}>
-                {currentTotal.toLocaleString("en-IN")} µg today
+                {t("daystrip_today", { total: currentTotal.toLocaleString("en-IN") })}
                 {hasChangesActive && baseTotal > currentTotal && (
                   <span className={styles.memberSaved}>
                     −{(baseTotal - currentTotal).toLocaleString("en-IN")} µg
@@ -104,15 +106,15 @@ export function DayStrip({
             </div>
 
             <div className={styles.peakNotice}>
-              Peak intake at {formatClock(peakHour)} ({peakValue.toFixed(1)} µg)
+              {t("daystrip_peak", { clock: formatClock(peakHour), val: peakValue.toFixed(1) })}
             </div>
 
             <table className="sr-only">
-              <caption>Hourly inhaled PM2.5 dose breakdown for {member.label}</caption>
+              <caption>{t("daystrip_table_caption", { name: member.label })}</caption>
               <thead>
                 <tr>
-                  <th scope="col">Hour</th>
-                  <th scope="col">Inhaled Dose (µg)</th>
+                  <th scope="col">{t("daystrip_th_hour")}</th>
+                  <th scope="col">{t("daystrip_th_dose")}</th>
                 </tr>
               </thead>
               <tbody>

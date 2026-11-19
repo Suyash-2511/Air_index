@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import type { PlaceSuggestion } from "@/client/types";
+import { useLocale } from "@/hooks/useLocale";
 import { IconPin, IconSearch } from "./icons";
 import styles from "./Combobox.module.css";
 
@@ -34,6 +35,7 @@ export function Combobox({
   error,
   noResultsFor,
 }: ComboboxProps) {
+  const { t } = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const listboxId = useId();
@@ -122,7 +124,7 @@ export function Combobox({
 
       {noResultsFor && !error && !loading && (
         <p className={styles.empty} role="status">
-          No places in India match “{noResultsFor}”. Try a city, neighbourhood or PIN code.
+          {t("combobox_no_results", { query: noResultsFor })}
         </p>
       )}
 

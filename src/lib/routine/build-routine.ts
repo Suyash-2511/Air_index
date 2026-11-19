@@ -1,3 +1,4 @@
+import type { TranslationKey } from "../i18n";
 import type { Household } from "../types";
 import { findDaytimeWindows, findDirtiestStretch } from "./routine-windows";
 import { COMMUTE_FALLBACK, COMMUTE_FIT, bestFor, endOf, titleFor, type RankedLike } from "./rules";
@@ -6,16 +7,13 @@ export type { RankedLike } from "./rules";
 
 /** One timed routine step built deterministically from the forecast and household day. */
 export interface RoutineItem {
-  startHour: number;
-  endHour: number;
+  startHour: number; endHour: number;
   kind: "seal" | "ventilate" | "outdoor" | "commute" | "cook" | "sleep";
-  title: string;
-  detail: string;
-  pm25: number;
-  memberIds: string[];
-  interventionId?: string | undefined;
-  savedMicrograms?: number | undefined;
+  title: string; detail: string; pm25: number; memberIds: string[];
+  interventionId?: string | undefined; savedMicrograms?: number | undefined;
   reducesOwnEmissions: boolean;
+  titleKey?: TranslationKey; detailKey?: TranslationKey;
+  detailParams?: Record<string, string | number>;
 }
 
 const COOK_IDS = new Set(["kitchen_exhaust_fan", "add_exhaust_fan", "cleaner_cooking_fuel", "switch_to_clean_cooking"]);
@@ -41,6 +39,7 @@ export function buildRoutine(
       startHour: clean.start, endHour: clean.end, kind: "ventilate",
       title: "Open windows for 15 minutes", detail: `Cleanest daytime air today at ${cleanMean} µg/m³.`,
       pm25: cleanMean, memberIds: household.members.map((m) => m.id), reducesOwnEmissions: false,
+      titleKey: "routine_title_open_windows", detailKey: "routine_detail_open_windows", detailParams: { pm25: cleanMean },
     });
     const outdoors = household.members.filter((m) =>
       m.windows.some((w) => w.activity === "outdoor_exercise" || w.activity === "outdoor_play"),
@@ -49,18 +48,25 @@ export function buildRoutine(
       const names = outdoors.map((m) => m.label).join(", ");
       let target = clean;
       let detail = `Least smoggy daytime hours for ${names} to be outdoors, about ${cleanMean} µg/m³.`;
+      let detailKey: TranslationKey = "routine_detail_outdoor";
+      let detailParams: Record<string, string | number> = { names, pm25: cleanMean };
       if (clean.meanO3 !== undefined && clean.meanO3 > 100) {
         const safer = windows.find((w) => w.meanO3 !== undefined && w.meanO3 <= 100);
         if (safer) {
           target = safer;
           detail = `Next-best daytime hours for ${names} to be outdoors, about ${Math.round(safer.mean)} µg/m³; afternoon ozone is elevated at ${Math.round(clean.meanO3)} µg/m³.`;
+          detailKey = "routine_detail_outdoor_ozone_alt";
+          detailParams = { names, pm25: Math.round(safer.mean), o3: Math.round(clean.meanO3) };
         } else {
           detail = `Least smoggy daytime hours for ${names} to be outdoors, about ${cleanMean} µg/m³, but afternoon ozone is elevated (${Math.round(clean.meanO3)} µg/m³).`;
+          detailKey = "routine_detail_outdoor_ozone_warn";
+          detailParams = { names, pm25: cleanMean, o3: Math.round(clean.meanO3) };
         }
       }
       items.push({
         startHour: target.start, endHour: target.end, kind: "outdoor", title: "Best time to be outside",
         detail, pm25: Math.round(target.mean), memberIds: outdoors.map((m) => m.id), reducesOwnEmissions: false,
+        titleKey: "routine_title_outdoor", detailKey, detailParams,
       });
     }
   }
@@ -74,6 +80,9 @@ export function buildRoutine(
       startHour: worst.start, endHour: worst.end, kind: "seal", title: "Keep windows shut", detail,
       pm25: worst.mean, memberIds: household.members.map((m) => m.id),
       interventionId: sealChange?.id, savedMicrograms: sealChange?.savedMicrograms, reducesOwnEmissions: false,
+      titleKey: "routine_title_keep_windows_shut",
+      detailKey: times >= 2 ? "routine_detail_keep_windows_shut_limit" : "routine_detail_keep_windows_shut",
+      detailParams: times >= 2 ? { pm25: worst.mean, times } : { pm25: worst.mean },
     });
   }
 
@@ -84,12 +93,17 @@ export function buildRoutine(
         const start = w.startHour;
         const end = endOf(start, w.durationMinutes);
         const pm25 = Math.round(fMap.get(start) ?? 0);
+        const isYou = member.label.trim().toLowerCase() === "you";
+        const isPub = commute?.id === "public_transport_instead_of_cycling";
+        const cTitleKey: TranslationKey = isPub ? "routine_title_commute_public" : w.activity === "commute_cycle" ? "routine_title_commute_mask_cycle" : w.activity === "commute_walk" ? "routine_title_commute_mask_walk" : w.activity === "commute_vehicle" ? "routine_title_commute_recirculate" : "routine_title_commute_n95";
         items.push({
           startHour: start, endHour: end, kind: "commute",
           title: commute ? titleFor(commute.id) : COMMUTE_FALLBACK[w.activity] ?? "Wear an N95 mask outside",
-          detail: `${member.label.trim().toLowerCase() === "you" ? "Your" : `${member.label}'s`} commute: outdoor PM2.5 is about ${pm25} µg/m³.`,
+          detail: `${isYou ? "Your" : `${member.label}'s`} commute: outdoor PM2.5 is about ${pm25} µg/m³.`,
           pm25, memberIds: [member.id], interventionId: commute?.id,
           savedMicrograms: commute?.savedMicrograms, reducesOwnEmissions: commute?.reducesOwnEmissions ?? false,
+          titleKey: cTitleKey, detailKey: isYou ? "routine_detail_commute_you" : "routine_detail_commute",
+          detailParams: isYou ? { pm25 } : { name: member.label, pm25 },
         });
       }
     }
@@ -103,12 +117,14 @@ export function buildRoutine(
         const start = w.startHour;
         const end = endOf(start, w.durationMinutes);
         const pm25 = Math.round(fMap.get(start) ?? 0);
+        const cookTitleKey: TranslationKey = isClean ? "routine_title_clean_fuel" : cook || household.home.hasExhaustFan ? "routine_title_cook_chimney" : "routine_title_cook_door";
         items.push({
           startHour: start, endHour: end, kind: "cook",
           title: cook ? titleFor(cook.id) : household.home.hasExhaustFan ? "Run the chimney while cooking" : "Cook with the kitchen door shut",
           detail: `Cooking adds indoor PM2.5; ambient outdoor air is ${pm25} µg/m³.`,
           pm25, memberIds: [member.id], interventionId: cook?.id,
           savedMicrograms: cook?.savedMicrograms, reducesOwnEmissions: isClean || (cook?.reducesOwnEmissions ?? false),
+          titleKey: cookTitleKey, detailKey: "routine_detail_cook", detailParams: { pm25 },
         });
       }
     }
@@ -134,6 +150,8 @@ export function buildRoutine(
       detail: `Overnight outdoor PM2.5 is around ${pm25} µg/m³.`,
       pm25, memberIds: household.members.filter((m) => m.windows.some((w) => w.activity === "sleep")).map((m) => m.id),
       interventionId: purifier?.id, savedMicrograms: purifier?.savedMicrograms, reducesOwnEmissions: false,
+      titleKey: hasPurifier ? "routine_title_sleep_purifier" : "routine_title_sleep_shut",
+      detailKey: "routine_detail_sleep", detailParams: { pm25 },
     });
   }
 

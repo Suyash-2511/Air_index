@@ -6,3 +6,4 @@ export {
   type UseLocationSearchOptions,
   type UseLocationSearchResult,
 } from "./useLocationSearch";
+export { useLocale, LocaleProvider, type LocaleContextValue } from "./useLocale";

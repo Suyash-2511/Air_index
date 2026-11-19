@@ -79,11 +79,14 @@ export async function submitIntake(
 }
 
 /** Computes whole-day physical exposure doses and ranked interventions for a household. */
-export async function computePlan(household: Household): Promise<PlanApiResponse> {
+export async function computePlan(
+  household: Household,
+  locale: "en" | "hi" = "en",
+): Promise<PlanApiResponse> {
   const res = await fetch("/api/plan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ household }),
+    body: JSON.stringify({ household, locale }),
   });
   if (!res.ok) {
     throw await readError(res, "Failed to compute exposure plan");
@@ -95,11 +98,12 @@ export async function computePlan(household: Household): Promise<PlanApiResponse
 export async function askPlanQuestion(
   question: string,
   household: Household,
+  locale: "en" | "hi" = "en",
 ): Promise<AskApiResponse> {
   const res = await fetch("/api/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, household }),
+    body: JSON.stringify({ question, household, locale }),
   });
   if (!res.ok) {
     throw await readError(res, "Failed to answer plan question");

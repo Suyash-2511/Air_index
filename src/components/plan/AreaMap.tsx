@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
+import { useLocale } from "@/hooks/useLocale";
 import { roundForMap, tilesForPreview } from "@/lib/maps/projection";
 import styles from "./AreaMap.module.css";
 
@@ -17,6 +18,7 @@ export interface AreaMapProps {
  * to an informative message if the basemap cannot be loaded.
  */
 export function AreaMap({ lat, lng, label }: AreaMapProps) {
+  const { t } = useLocale();
   const [hasError, setHasError] = useState(false);
   const rounded = roundForMap(lat, lng);
   const tiles = tilesForPreview(rounded.lat, rounded.lng);
@@ -27,14 +29,14 @@ export function AreaMap({ lat, lng, label }: AreaMapProps) {
         {hasError ? (
           <div className={styles.fallback}>
             <p className={styles.fallbackText}>
-              The area map could not load right now.
+              {t("map_fallback")}
             </p>
           </div>
         ) : (
           <>
             <img
               src={`/api/staticmap?lat=${rounded.lat}&lng=${rounded.lng}`}
-              alt={`Street map of ${label} with PM2.5 heatmap overlay`}
+              alt={t("map_alt", { label })}
               className={styles.basemap}
               onError={() => setHasError(true)}
             />
@@ -60,7 +62,7 @@ export function AreaMap({ lat, lng, label }: AreaMapProps) {
         )}
       </div>
       <figcaption className={styles.caption}>
-        {label} · PM2.5 heatmap, Google Air Quality
+        {t("map_caption", { label })}
       </figcaption>
     </figure>
   );

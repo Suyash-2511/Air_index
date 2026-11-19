@@ -124,6 +124,19 @@ saans/
 - **Mask Fit**: N95 mask usage assumes proper facial seal achieving rated particulate filtration.
 - **Planning Scope**: Estimates represent daily cumulative inhaled particle mass for planning and lifestyle adjustments, not clinical diagnostic prescriptions.
 
+## Documentation
+
+| Document | What it covers |
+|---|---|
+| [PROBLEM_ALIGNMENT.md](PROBLEM_ALIGNMENT.md) | Each part of the challenge brief and where Saans answers it |
+| [CODE_QUALITY.md](CODE_QUALITY.md) | Structure, rules and how they are enforced |
+| [TESTING.md](TESTING.md) | Test suite, coverage and edge cases |
+| [SECURITY.md](SECURITY.md) | Keys, validation, rate limits, prompt-injection defence |
+| [ACCESSIBILITY.md](ACCESSIBILITY.md) | WCAG 2.2 AA measures and how they are tested |
+| [EFFICIENCY.md](EFFICIENCY.md) | Caching, model use and page weight |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Why the main design choices were made |
+| [docs/EXPOSURE-MODEL.md](docs/EXPOSURE-MODEL.md) | The dose formula, sources and assumptions |
+
 ## Run it
 
 ```bash

@@ -16,6 +16,7 @@ const MAX_BODY_BYTES = 8192;
 
 const planRequestSchema = z.object({
   household: householdSchema,
+  locale: z.enum(["en", "hi"]).default("en"),
 });
 
 /** Plan computation and explanation endpoint calculating personalized physical dose reductions. */
@@ -35,7 +36,7 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const { household } = parseResult.data;
+  const { household, locale } = parseResult.data;
 
   for (const member of household.members) {
     const scheduleProblems = validateSchedule(member.windows);
@@ -50,7 +51,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const localHour = getLocationCurrentHour("in");
     const dateStr = new Date().toISOString().slice(0, 10);
-    const cacheKey = hashPlanKey(household, dateStr, localHour, EXPLAIN_PROMPT_VERSION);
+    const cacheKey = hashPlanKey(household, dateStr, localHour, `${EXPLAIN_PROMPT_VERSION}-${locale}`);
 
     const cached = planCache.get(cacheKey);
     if (cached) {
@@ -68,7 +69,7 @@ export async function POST(request: Request): Promise<Response> {
     const dayForecastMap: DayForecast = new Map(forecast.map((f) => [f.hour, f.pm25]));
     const computedPlan = buildPlan(household, dayForecastMap);
 
-    const explanations = await explainPlan(computedPlan, household);
+    const explanations = await explainPlan(computedPlan, household, locale);
 
     const rankedWithExplanations = computedPlan.ranked.map((item) => ({
       ...item,

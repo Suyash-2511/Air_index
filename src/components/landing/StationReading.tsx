@@ -2,6 +2,8 @@
 
 import styles from "./StationReading.module.css";
 import { useCountUp } from "@/hooks/useCountUp";
+import { useLocale } from "@/hooks/useLocale";
+import { getAqiCategoryKey } from "@/lib/air/pollutants";
 
 /** WHO 2021 air quality guideline for 24-hour mean PM2.5, in µg/m³. */
 const WHO_DAILY_GUIDELINE = 15;
@@ -14,20 +16,27 @@ export interface StationReadingProps {
   aqi?: { value: number; category: string } | undefined;
 }
 
-function guidelineNote(pm25: number): string {
-  const ratio = pm25 / WHO_DAILY_GUIDELINE;
-  if (ratio < 1) return `Within the WHO 24-hour guideline of ${WHO_DAILY_GUIDELINE}`;
-  return `${ratio >= 10 ? Math.round(ratio) : ratio.toFixed(1)}× the WHO 24-hour guideline`;
-}
-
 /**
  * The station reading: today's outdoor PM2.5 and AQI as the bulletin's lead figure.
  * A number is only shown once it has really loaded, never as a placeholder.
  */
 export function StationReading({ livePm25, cityName, isLive = false, aqi }: StationReadingProps) {
+  const { t } = useLocale();
   const reading = livePm25 === undefined ? undefined : Math.round(livePm25);
   const shown = useCountUp(reading, { delay: 850, duration: 1500 });
-  const aqiText = aqi ? `, AQI ${Math.round(aqi.value)} ${aqi.category}` : "";
+
+  const aqiCategory = aqi ? t(getAqiCategoryKey(aqi.category)) : "";
+  const aqiText = aqi ? `, AQI ${Math.round(aqi.value)} ${aqiCategory}` : "";
+
+  const guidelineText = reading !== undefined
+    ? (reading / WHO_DAILY_GUIDELINE < 1
+      ? t("station_who_within")
+      : t("station_who_ratio", {
+          ratio: (reading / WHO_DAILY_GUIDELINE) >= 10
+            ? Math.round(reading / WHO_DAILY_GUIDELINE)
+            : (reading / WHO_DAILY_GUIDELINE).toFixed(1),
+        }))
+    : t("station_reading_loading");
 
   return (
     <div
@@ -35,8 +44,8 @@ export function StationReading({ livePm25, cityName, isLive = false, aqi }: Stat
       role="status"
       aria-label={
         reading !== undefined
-          ? `Outdoor air now in ${cityName}: PM2.5 ${reading} micrograms per cubic metre${aqiText}`
-          : `Loading outdoor air for ${cityName}`
+          ? t("station_status_loaded", { city: cityName, reading, aqi: aqiText })
+          : t("station_status_loading", { city: cityName })
       }
     >
       <div className={styles.figure} aria-hidden="true">
@@ -44,16 +53,16 @@ export function StationReading({ livePm25, cityName, isLive = false, aqi }: Stat
         <span className={styles.unit}>µg/m³</span>
       </div>
       <div className={styles.facts} aria-hidden="true">
-        <span className={styles.label}>{isLive ? "PM2.5 where you are now" : "PM2.5 outdoors now"}</span>
+        <span className={styles.label}>
+          {isLive ? t("station_label_live") : t("station_label_city")}
+        </span>
         <span className={styles.city}>{cityName}</span>
         {aqi && (
           <span className={styles.aqiPill}>
-            AQI {Math.round(aqi.value)} · {aqi.category}
+            {t("station_aqi_pill", { val: Math.round(aqi.value), category: aqiCategory })}
           </span>
         )}
-        <span className={styles.note}>
-          {reading !== undefined ? guidelineNote(reading) : "Reading the air…"}
-        </span>
+        <span className={styles.note}>{guidelineText}</span>
       </div>
     </div>
   );

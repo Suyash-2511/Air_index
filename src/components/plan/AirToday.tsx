@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
+import { useLocale } from "@/hooks/useLocale";
 import {
   CRITERIA_POLLUTANTS,
+  getAqiCategoryKey,
   getDominantPollutantInfo,
   getPollutantLimitRatio,
   POLLUTANT_INFO,
   type PollutantCode,
 } from "@/lib/air/pollutants";
 import type { HourlyAir } from "@/lib/types";
+import { InversionExplainer } from "./InversionExplainer";
 import styles from "./AirToday.module.css";
 import headerStyles from "./AirTodayHeader.module.css";
 import detailsStyles from "./AirTodayDetails.module.css";
@@ -23,6 +26,7 @@ export interface AirTodayProps {
  * and expandable breakdown of the six criteria pollutants.
  */
 export function AirToday({ air }: AirTodayProps) {
+  const { t } = useLocale();
   const [expandedRow, setExpandedRow] = useState<PollutantCode | null>(null);
 
   const aqi = air.aqi;
@@ -36,18 +40,12 @@ export function AirToday({ air }: AirTodayProps) {
 
   const getConcentration = (code: PollutantCode): number | undefined => {
     switch (code) {
-      case "pm25":
-        return air.pm25;
-      case "pm10":
-        return air.pm10;
-      case "no2":
-        return air.no2;
-      case "o3":
-        return air.o3;
-      case "co":
-        return air.co;
-      case "so2":
-        return air.so2;
+      case "pm25": return air.pm25;
+      case "pm10": return air.pm10;
+      case "no2": return air.no2;
+      case "o3": return air.o3;
+      case "co": return air.co;
+      case "so2": return air.so2;
     }
   };
 
@@ -55,35 +53,35 @@ export function AirToday({ air }: AirTodayProps) {
     <section className={styles.card} aria-labelledby="air-today-heading">
       <div className={headerStyles.header}>
         <div>
-          <p className={headerStyles.kicker} id="air-today-heading">Air Quality Index · Current conditions</p>
+          <p className={headerStyles.kicker} id="air-today-heading">{t("air_today_kicker")}</p>
           <div className={headerStyles.aqiRow}>
             <span className={headerStyles.aqiFigure}>{aqiVal !== undefined ? aqiVal : "—"}</span>
-            <span className={headerStyles.aqiLabel}>CPCB NAQI</span>
+            <span className={headerStyles.aqiLabel}>{t("air_today_cpcb_label")}</span>
             <span
               className={headerStyles.badge}
               data-category={(category ?? "").toLowerCase().replace(/[\s_-]+/g, "")}
             >
               <span className={headerStyles.badgeDot} />
-              {category}
+              {t(getAqiCategoryKey(category))}
             </span>
           </div>
         </div>
 
         <div className={headerStyles.metaRow}>
           <div className={headerStyles.metaItem}>
-            <span>Dominant pollutant:</span>
-            <span className={headerStyles.metaEmphasis}>{dominantInfo.label} ({dominantInfo.name})</span>
+            <span>{t("air_today_dominant_label")}</span>
+            <span className={headerStyles.metaEmphasis}>{dominantInfo.label} ({t(dominantInfo.nameKey)})</span>
           </div>
           <div className={headerStyles.metaItem}>
-            <span>Source:</span>
+            <span>{t("air_today_source_label")}</span>
             <span className={headerStyles.metaEmphasis}>
-              {aqi?.source === "cpcb" ? "CPCB via Google Air Quality" : "CPCB scale (computed from hourly readings)"}
+              {aqi?.source === "cpcb" ? t("air_today_source_google") : t("air_today_source_computed")}
             </span>
           </div>
         </div>
       </div>
 
-      <div className={styles.grid} role="region" aria-label="Criteria pollutants breakdown">
+      <div className={styles.grid} role="region" aria-label={t("air_today_region_aria")}>
         {CRITERIA_POLLUTANTS.map((code) => {
           const info = POLLUTANT_INFO[code];
           const val = getConcentration(code);
@@ -100,7 +98,7 @@ export function AirToday({ air }: AirTodayProps) {
                 onClick={() => toggleRow(code)}
                 aria-expanded={isExpanded}
                 aria-controls={detailId}
-                aria-label={`${info.label}: ${val !== undefined ? `${val} ${info.unit}` : "No reading"}, ${ratio > 0 ? `${ratio} times national limit` : "within limit"}. Toggle health details.`}
+                aria-label={`${info.label}: ${val !== undefined ? `${val} ${info.unit}` : t("no_reading")}, ${ratio > 0 ? t("ratio_times_limit", { ratio }) : t("within_limit")}. Toggle health details.`}
               >
                 <span className={styles.pollutantLabel}>{info.label}</span>
 
@@ -118,13 +116,10 @@ export function AirToday({ air }: AirTodayProps) {
                 </span>
 
                 <span className={`${styles.ratioCol} ${ratio > 1 ? styles.ratioHigh : ""}`}>
-                  {val !== undefined && ratio > 0 ? `${ratio}× limit` : "Within limit"}
+                  {val !== undefined && ratio > 0 ? t("air_today_ratio_limit", { ratio }) : t("air_today_within_limit")}
                 </span>
 
-                <span
-                  className={`${styles.chevron} ${isExpanded ? styles.chevronExpanded : ""}`}
-                  aria-hidden="true"
-                >
+                <span className={`${styles.chevron} ${isExpanded ? styles.chevronExpanded : ""}`} aria-hidden="true">
                   ▼
                 </span>
               </button>
@@ -132,20 +127,20 @@ export function AirToday({ air }: AirTodayProps) {
               {isExpanded && (
                 <div id={detailId} className={detailsStyles.details}>
                   <div className={detailsStyles.detailsBlock}>
-                    <span className={detailsStyles.detailsHeading}>Standard</span>
-                    <span>National limit: {info.nationalLimit} {info.unit} ({info.limitPeriod} standard)</span>
+                    <span className={detailsStyles.detailsHeading}>{t("pollutant_heading_standard")}</span>
+                    <span>{t("pollutant_standard_text", { limit: info.nationalLimit, unit: info.unit, period: info.limitPeriod })}</span>
                   </div>
                   <div className={detailsStyles.detailsBlock}>
-                    <span className={detailsStyles.detailsHeading}>Health effect</span>
-                    <span>{info.healthEffect}</span>
+                    <span className={detailsStyles.detailsHeading}>{t("pollutant_heading_health")}</span>
+                    <span>{t(info.healthEffectKey)}</span>
                   </div>
                   <div className={detailsStyles.detailsBlock}>
-                    <span className={detailsStyles.detailsHeading}>Common sources</span>
-                    <span>{info.sources}</span>
+                    <span className={detailsStyles.detailsHeading}>{t("pollutant_heading_sources")}</span>
+                    <span>{t(info.sourcesKey)}</span>
                   </div>
                   <div className={detailsStyles.detailsBlock}>
-                    <span className={detailsStyles.detailsHeading}>At-risk groups</span>
-                    <span>{info.atRisk}</span>
+                    <span className={detailsStyles.detailsHeading}>{t("pollutant_heading_at_risk")}</span>
+                    <span>{t(info.atRiskKey)}</span>
                   </div>
                 </div>
               )}
@@ -154,8 +149,10 @@ export function AirToday({ air }: AirTodayProps) {
         })}
       </div>
 
+      <InversionExplainer />
+
       <p className={detailsStyles.disclaimer}>
-        Your dose below is based on PM2.5, the pollutant with the strongest evidence for breathing harm.
+        {t("air_today_disclaimer")}
       </p>
     </section>
   );

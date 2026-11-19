@@ -1,12 +1,18 @@
 import { formatClock } from "../format/time";
+import { t, type Locale } from "../i18n";
+import { getActivityLabel } from "@/components/labels";
 import type { ActivityWindow, AgeBand } from "../types";
 
 /** Total minutes in a 24-hour day. */
 export const MINUTES_IN_DAY = 1440;
 
 /** Plain wording for a block, e.g. "Cycling at 8 AM", used in schedule messages people read. */
-function describe(w: ActivityWindow): string {
+function describe(w: ActivityWindow, locale: Locale = "en"): string {
   const clock = formatClock(w.startHour);
+  if (locale === "hi") {
+    const actLabel = getActivityLabel(w.activity, "hi");
+    return t("hi", "sched_at_clock", { name: actLabel, clock });
+  }
   const name = w.activity.replace(/_/g, " ");
   return `${name.charAt(0).toUpperCase()}${name.slice(1)} at ${clock}`;
 }
@@ -19,27 +25,25 @@ function lowerFirst(text: string): string {
  * Validates a household member's activity windows for schedule integrity.
  * Detects overlapping windows (including midnight wraps) and schedules > 1440m.
  */
-export function validateSchedule(windows: readonly ActivityWindow[]): string[] {
+export function validateSchedule(windows: readonly ActivityWindow[], locale: Locale = "en"): string[] {
   const problems: string[] = [];
-  if (!windows || windows.length === 0) return ["Add at least one block to this day."];
+  if (!windows || windows.length === 0) return [t(locale, "sched_empty")];
 
   let totalMinutes = 0;
   for (let i = 0; i < windows.length; i++) {
     const w = windows[i];
     if (!w) continue;
     if (w.durationMinutes <= 0) {
-      problems.push(`${describe(w)} needs a length.`);
+      problems.push(t(locale, "sched_needs_length", { desc: describe(w, locale) }));
     } else if (w.durationMinutes > MINUTES_IN_DAY) {
-      problems.push(`${describe(w)} is longer than a whole day.`);
+      problems.push(t(locale, "sched_too_long", { desc: describe(w, locale) }));
     }
     totalMinutes += w.durationMinutes;
   }
 
   if (totalMinutes > MINUTES_IN_DAY) {
     const extra = (totalMinutes - MINUTES_IN_DAY) / 60;
-    problems.push(
-      `This day adds up to ${+(totalMinutes / 60).toFixed(1)} hr, ${+extra.toFixed(1)} hr longer than 24 hours. Shorten a block.`,
-    );
+    problems.push(t(locale, "sched_day_over_24", { total: +(totalMinutes / 60).toFixed(1), extra: +extra.toFixed(1) }));
   }
 
   const minuteOwners = new Int16Array(MINUTES_IN_DAY).fill(-1);
@@ -54,7 +58,10 @@ export function validateSchedule(windows: readonly ActivityWindow[]): string[] {
       const owner = minuteOwners[cur];
       if (owner !== undefined && owner !== -1 && owner !== i) {
         const prior = windows[owner];
-        problems.push(`${describe(w)} overlaps ${prior ? lowerFirst(describe(prior)) : "another block"}. Move or shorten one.`);
+        problems.push(t(locale, "sched_overlap", {
+          desc1: describe(w, locale),
+          desc2: prior ? lowerFirst(describe(prior, locale)) : t(locale, "sched_another_block"),
+        }));
         break;
       }
       minuteOwners[cur] = i;
@@ -92,13 +99,9 @@ export function getDefaultScheduleForAgeBand(ageBand: AgeBand, commuteWindow?: A
     const windows: ActivityWindow[] = [
       { activity: "sleep", setting: "indoor", startHour: 22, durationMinutes: 480, room: "bedroom", mask: false },
     ];
-    if (morningDur > 0) {
-      windows.push({ activity: "light_indoor", setting: "indoor", startHour: 6, durationMinutes: morningDur, room: "living", mask: false });
-    }
+    if (morningDur > 0) windows.push({ activity: "light_indoor", setting: "indoor", startHour: 6, durationMinutes: morningDur, room: "living", mask: false });
     windows.push({ ...commuteWindow, durationMinutes: cDur });
-    if (eveningDur > 0) {
-      windows.push({ activity: "light_indoor", setting: "indoor", startHour: cEndHour, durationMinutes: eveningDur, room: "living", mask: false });
-    }
+    if (eveningDur > 0) windows.push({ activity: "light_indoor", setting: "indoor", startHour: cEndHour, durationMinutes: eveningDur, room: "living", mask: false });
     if (windows.reduce((sum, w) => sum + w.durationMinutes, 0) === MINUTES_IN_DAY && isScheduleValid(windows)) {
       return windows;
     }

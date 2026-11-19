@@ -1,4 +1,5 @@
 import type { HTMLAttributes } from "react";
+import { useLocale } from "@/hooks/useLocale";
 import styles from "./StaticFallback.module.css";
 
 export interface StaticFallbackProps extends HTMLAttributes<HTMLDivElement> {
@@ -16,14 +17,16 @@ export function StaticFallback({
   className = "",
   ...props
 }: StaticFallbackProps) {
+  const { t } = useLocale();
+
   return (
     <div
       className={`${styles.container} ${className}`}
       role="img"
       aria-label={
         pm25 === undefined
-          ? `Visualisation of Earth centred on ${cityName}`
-          : `Visualisation of Earth with ${cityName} air quality: PM2.5 ${Math.round(pm25)} micrograms per cubic metre`
+          ? t("static_fallback_aria_unmeasured", { cityName })
+          : t("static_fallback_aria_measured", { cityName, pm25: Math.round(pm25) })
       }
       {...props}
     >

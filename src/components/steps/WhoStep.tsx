@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { submitIntake } from "@/client/api";
 import { getDefaultHousehold } from "@/data/sampleHousehold";
+import { useLocale } from "@/hooks/useLocale";
 import { isScheduleValid } from "@/lib/exposure/schedule";
 import type { Household, HouseholdMember, Location } from "@/lib/types";
 import { HomeSetupForm } from "../household/HomeSetupForm";
@@ -32,6 +33,7 @@ export function WhoStep({
   onBuildPlan,
   onBack,
 }: WhoStepProps) {
+  const { t } = useLocale();
   const [household, setHousehold] = useState<Household>(initialHousehold ?? getDefaultHousehold(location));
   const [sentence, setSentence] = useState("");
   const [assumed, setAssumed] = useState<readonly string[]>(initialAssumed ?? []);
@@ -67,7 +69,7 @@ export function WhoStep({
     if (household.members.length >= 8) return;
     const newMember: HouseholdMember = {
       id: `m-${Date.now()}`,
-      label: `Person ${household.members.length + 1}`,
+      label: t("who_default_person", { n: household.members.length + 1 }),
       ageBand: "adult",
       sensitivities: [],
       windows: [
@@ -82,23 +84,23 @@ export function WhoStep({
 
   return (
     <section className={styles.container} aria-labelledby="step-who-heading">
-      <p className={styles.kicker}>Entry 02 · Household</p>
+      <p className={styles.kicker}>{t("who_kicker")}</p>
       <h2 id="step-who-heading" className={styles.heading} tabIndex={-1}>
-        Who lives here?
+        {t("who_heading")}
       </h2>
       <p className={styles.description}>
-        Tell us who is at home and how their day goes. Write it in a sentence, or edit each person below.
+        {t("who_description")}
       </p>
 
       <div className={styles.intakeBox}>
         <label htmlFor="intake-textarea" className={styles.description}>
-          Describe your family's day in one or two sentences
+          {t("who_intake_label")}
         </label>
         <textarea
           id="intake-textarea"
           value={sentence}
           onChange={(e) => setSentence(e.target.value)}
-          placeholder="e.g. My mother has asthma, I cycle to work at 8am, we cook on LPG and keep windows open"
+          placeholder={t("who_intake_placeholder")}
           className={styles.textarea}
         />
         <button
@@ -107,13 +109,13 @@ export function WhoStep({
           disabled={loading || !sentence.trim()}
           className={styles.buttonSecondary}
         >
-          {loading ? "Reading your routine…" : "Fill in the form from this"}
+          {loading ? t("who_reading_routine") : t("who_parse_btn")}
         </button>
       </div>
 
       {assumed.length > 0 && (
-        <div className={styles.assumedList} role="region" aria-label="Assumed field notes">
-          <span className={styles.assumedTitle}>What we assumed from your description:</span>
+        <div className={styles.assumedList} role="region" aria-label={t("who_assumed_region")}>
+          <span className={styles.assumedTitle}>{t("who_assumed_title")}</span>
           <ul>
             {assumed.map((note, idx) => (
               <li key={idx}>{note}</li>
@@ -137,7 +139,7 @@ export function WhoStep({
 
         {household.members.length < 8 && (
           <button type="button" onClick={addMember} className={styles.buttonSecondary}>
-            + Add another person
+            {t("who_add_person")}
           </button>
         )}
       </div>
@@ -146,7 +148,7 @@ export function WhoStep({
 
       <div className={styles.footerActions}>
         <button type="button" onClick={onBack} className={styles.buttonSecondary}>
-          ← Change area
+          {t("who_change_area")}
         </button>
         <button
           type="button"
@@ -154,7 +156,7 @@ export function WhoStep({
           onClick={() => onBuildPlan(household)}
           className={styles.buttonPrimary}
         >
-          Build my plan
+          {t("who_build_plan")}
         </button>
       </div>
     </section>

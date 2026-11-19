@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale } from "@/hooks/useLocale";
 import type { COOKING_FUELS, HomeSetup, WINDOW_HABITS } from "@/lib/types";
 import styles from "./HomeSetupForm.module.css";
 
@@ -14,13 +15,15 @@ export interface HomeSetupFormProps {
  * and indoor source generation (cooking fuel, exhaust, purifier, window habits).
  */
 export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
+  const { t } = useLocale();
+
   return (
     <div className={styles.container}>
-      <h3 className={styles.title}>Home and ventilation</h3>
+      <h3 className={styles.title}>{t("home_setup_title")}</h3>
       <div className={styles.grid}>
         <div className={styles.field}>
           <label htmlFor="window-habit-select" className={styles.label}>
-            Windows
+            {t("home_windows_label")}
           </label>
           <select
             id="window-habit-select"
@@ -33,15 +36,15 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
             }
             className={styles.select}
           >
-            <option value="kept_closed">Mostly kept closed</option>
-            <option value="open_sometimes">Open sometimes</option>
-            <option value="open_often">Open often</option>
+            <option value="kept_closed">{t("window_habit_kept_closed")}</option>
+            <option value="open_sometimes">{t("window_habit_open_sometimes")}</option>
+            <option value="open_often">{t("window_habit_open_often")}</option>
           </select>
         </div>
 
         <div className={styles.field}>
           <label htmlFor="cooking-fuel-select" className={styles.label}>
-            Main cooking fuel
+            {t("home_cooking_fuel_label")}
           </label>
           <select
             id="cooking-fuel-select"
@@ -54,11 +57,11 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
             }
             className={styles.select}
           >
-            <option value="lpg">LPG cylinder</option>
-            <option value="piped_gas">Piped gas (PNG)</option>
-            <option value="electric">Electric or induction</option>
-            <option value="kerosene">Kerosene</option>
-            <option value="biomass">Wood, dung or crop waste</option>
+            <option value="lpg">{t("cooking_fuel_lpg")}</option>
+            <option value="piped_gas">{t("cooking_fuel_piped_gas")}</option>
+            <option value="electric">{t("cooking_fuel_electric")}</option>
+            <option value="kerosene">{t("cooking_fuel_kerosene")}</option>
+            <option value="biomass">{t("cooking_fuel_biomass")}</option>
           </select>
         </div>
 
@@ -70,20 +73,20 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
               onChange={(e) => onChange({ ...home, hasPurifier: e.target.checked })}
               className={styles.checkbox}
             />
-            <span>We have an air purifier</span>
+            <span>{t("home_has_purifier")}</span>
           </label>
 
           {home.hasPurifier && (
             <select
-              aria-label="Purifier location room"
+              aria-label={t("home_purifier_room_aria")}
               value={home.purifierRoom}
               onChange={(e) =>
                 onChange({ ...home, purifierRoom: e.target.value as "living" | "bedroom" })
               }
               className={styles.select}
             >
-              <option value="living">In the living room</option>
-              <option value="bedroom">In the bedroom</option>
+              <option value="living">{t("purifier_room_living")}</option>
+              <option value="bedroom">{t("purifier_room_bedroom")}</option>
             </select>
           )}
         </div>
@@ -96,7 +99,7 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
               onChange={(e) => onChange({ ...home, hasExhaustFan: e.target.checked })}
               className={styles.checkbox}
             />
-            <span>Kitchen chimney or exhaust fan</span>
+            <span>{t("home_has_exhaust")}</span>
           </label>
 
           <label className={styles.checkboxGroup}>
@@ -106,7 +109,7 @@ export function HomeSetupForm({ home, onChange }: HomeSetupFormProps) {
               onChange={(e) => onChange({ ...home, smokingIndoors: e.target.checked })}
               className={styles.checkbox}
             />
-            <span>Someone smokes indoors</span>
+            <span>{t("home_smoking_indoors")}</span>
           </label>
         </div>
       </div>

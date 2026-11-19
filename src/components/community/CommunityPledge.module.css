@@ -1,0 +1,117 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-20);
+  background-color: var(--sky-1);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: 1.5;
+}
+
+.pledgeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.pledgeItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-12);
+  border-radius: var(--radius-sm);
+  background-color: var(--sky-0);
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  transition: all var(--duration-short) var(--ease-out);
+}
+
+.pledgeItem:hover {
+  border-color: var(--rule-strong);
+}
+
+.pledgeItem[data-checked="true"] {
+  border-color: var(--ink);
+  background-color: var(--sky-2);
+}
+
+.checkbox {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.pledgeContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pledgeTitle {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.pledgeEffect {
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+  line-height: 1.4;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.shareBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--sky-0);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity var(--duration-short) var(--ease-out);
+}
+
+.shareBtn:hover {
+  opacity: 0.9;
+}
+
+.shareBtn:focus-visible {
+  outline: 2px solid var(--smog-deep);
+  outline-offset: 2px;
+}
+
+.announcement {
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+}

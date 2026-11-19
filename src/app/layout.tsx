@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { preload } from "react-dom";
 import type { ReactNode } from "react";
+import { LocaleProvider } from "@/hooks/useLocale";
 import "@/styles/globals.css";
 
 const instrumentSerif = Instrument_Serif({
@@ -49,7 +50,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        {children}
+        <LocaleProvider>{children}</LocaleProvider>
       </body>
     </html>
   );

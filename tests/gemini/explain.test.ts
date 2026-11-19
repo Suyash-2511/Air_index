@@ -121,4 +121,9 @@ describe("Plan Explainer", () => {
     expect(explanations.cleaner_cooking_fuel?.sustainableAlternative).toBeDefined();
     expect(typeof explanations.cleaner_cooking_fuel?.sustainableAlternative).toBe("string");
   });
+
+  it("supports Hindi locale in demo explain fixture", () => {
+    const fixture = getDemoExplainFixture(dummyPlan, dummyHousehold, "hi");
+    expect(fixture.explanations[0]?.whyItHelps).toContain("सुरक्षा");
+  });
 });

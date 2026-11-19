@@ -51,7 +51,12 @@ export const explainResponseSchema: Record<string, unknown> = {
 export const EXPLAIN_PROMPT_VERSION = "v2";
 
 /** Builds deterministic explanations for demo mode, perfectly grounded in plan numbers. */
-export function getDemoExplainFixture(plan: Plan, household: Household): ExplainPlanResponse {
+export function getDemoExplainFixture(
+  plan: Plan,
+  household: Household,
+  locale: "en" | "hi" = "en",
+): ExplainPlanResponse {
+  const isHi = locale === "hi";
   const memberMap = new Map(household.members.map((m) => [m.id, m.label]));
 
   const explanations = plan.ranked.map((item: RankedIntervention, idx: number) => {
@@ -63,13 +68,22 @@ export function getDemoExplainFixture(plan: Plan, household: Household): Explain
     return {
       index: idx + 1,
       title: getInterventionTitle(item.id),
-      whyItHelps: `Reduces inhaled PM2.5 by ${savedUg} µg (${savedPct}%) protecting ${benLabel}.`,
-      steps: [
-        "Coordinate high-exposure hours and ensure family members adjust routines.",
-        "Keep doors and windows sealed when outdoor pollution levels peak.",
-      ],
+      whyItHelps: isHi
+        ? `${benLabel} की सुरक्षा: सांस में PM2.5 को ${savedUg} µg (${savedPct}%) कम करता है।`
+        : `Reduces inhaled PM2.5 by ${savedUg} µg (${savedPct}%) protecting ${benLabel}.`,
+      steps: isHi
+        ? [
+            "प्रदूषण के चरम घंटों में अपनी दिनचर्या समायोजित करें।",
+            "बाहरी प्रदूषण अधिक होने पर दरवाजे और खिड़कियां बंद रखें।",
+          ]
+        : [
+            "Coordinate high-exposure hours and ensure family members adjust routines.",
+            "Keep doors and windows sealed when outdoor pollution levels peak.",
+          ],
       sustainableAlternative: item.reducesOwnEmissions
-        ? "Switching to cleaner electric alternatives eliminates direct domestic emissions."
+        ? (isHi
+            ? "स्वच्छ इलेक्ट्रिक विकल्पों पर स्विच करने से घरेलू उत्सर्जन समाप्त होता है।"
+            : "Switching to cleaner electric alternatives eliminates direct domestic emissions.")
         : undefined,
     };
   });
@@ -84,7 +98,11 @@ Rules:
 2. STRICT NUMBER GROUNDING: Do NOT invent, recalculate, or alter any numbers.`;
 
 /** Generates plain-language, grounded explanations without exposing internal database or model IDs. */
-export async function explainPlan(plan: Plan, household: Household): Promise<Record<string, ExplainedIntervention>> {
+export async function explainPlan(
+  plan: Plan,
+  household: Household,
+  locale: "en" | "hi" = "en",
+): Promise<Record<string, ExplainedIntervention>> {
   if (plan.ranked.length === 0) return {};
 
   const memberIdToLabel = new Map(household.members.map((m) => [m.id, m.label]));
@@ -110,15 +128,19 @@ export async function explainPlan(plan: Plan, household: Household): Promise<Rec
     })),
   };
 
+  const systemPrompt = locale === "hi"
+    ? `${EXPLAIN_SYSTEM_PROMPT}\n3. Language: Hindi (Devanagari script). Write all explanations and steps in natural Hindi.`
+    : EXPLAIN_SYSTEM_PROMPT;
+
   const response = await generateStructured<ExplainPlanResponse>({
-    system: EXPLAIN_SYSTEM_PROMPT,
+    system: systemPrompt,
     contents: `Explain these computed plan actions:\n${JSON.stringify(inputSummary, null, 2)}`,
     responseSchema: explainResponseSchema,
     zodSchema: explainPlanResponseSchema,
-    demoFixture: () => getDemoExplainFixture(plan, household),
+    demoFixture: () => getDemoExplainFixture(plan, household, locale),
     // Every number is computed without Gemini, so a failed call must not fail the plan:
     // fall back to the deterministic explanations, which are grounded in the same numbers.
-  }).catch(() => getDemoExplainFixture(plan, household));
+  }).catch(() => getDemoExplainFixture(plan, household, locale));
 
   const resultMap: Record<string, ExplainedIntervention> = {};
 

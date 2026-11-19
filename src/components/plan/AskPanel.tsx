@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { askPlanQuestion } from "@/client/api";
 import type { AskApiResponse } from "@/client/types";
+import { useLocale } from "@/hooks/useLocale";
 import type { Household } from "@/lib/types";
 import styles from "./AskPanel.module.css";
 
@@ -17,6 +18,7 @@ export interface AskPanelProps {
  * while maintaining a permanent medical disclaimer.
  */
 export function AskPanel({ household }: AskPanelProps) {
+  const { locale, t } = useLocale();
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<AskApiResponse | undefined>();
   const [asked, setAsked] = useState<string | undefined>();
@@ -31,7 +33,7 @@ export function AskPanel({ household }: AskPanelProps) {
     setError(undefined);
     try {
       const q = question.trim();
-      const resp = await askPlanQuestion(q, household);
+      const resp = await askPlanQuestion(q, household, locale);
       setResult(resp);
       setAsked(q);
       setQuestion("");
@@ -45,23 +47,22 @@ export function AskPanel({ household }: AskPanelProps) {
   return (
     <section className={styles.panel} aria-labelledby="ask-panel-title">
       <h3 id="ask-panel-title" className={styles.title}>
-        Ask about your plan
+        {t("ask_title")}
       </h3>
       <p className={styles.description}>
-        Ask specific questions about your family members, mask use, purifier settings,
-        or commute adjustments.
+        {t("ask_subtitle")}
       </p>
 
       <form onSubmit={handleSubmit} className={styles.form}>
         <label htmlFor="ask-input" className="sr-only">
-          Ask a question about your plan
+          {t("ask_input_aria")}
         </label>
         <input
           id="ask-input"
           type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder={result ? "Ask another question" : "e.g. Should my mother wear a mask?"}
+          placeholder={result ? t("ask_placeholder_again") : t("ask_placeholder_default")}
           disabled={loading}
           className={styles.input}
         />
@@ -70,7 +71,7 @@ export function AskPanel({ household }: AskPanelProps) {
           disabled={loading || !question.trim()}
           className={styles.button}
         >
-          {loading ? "Checking your plan…" : "Ask"}
+          {loading ? t("ask_btn_loading") : t("ask_btn")}
         </button>
       </form>
 
@@ -82,11 +83,11 @@ export function AskPanel({ household }: AskPanelProps) {
 
       {result && (
         <div className={styles.answerBox} aria-live="polite">
-          {asked && <p className={styles.asked}>You asked: “{asked}”</p>}
+          {asked && <p className={styles.asked}>{t("ask_you_asked", { q: asked })}</p>}
           <p>{result.answer}</p>
           {result.citations.length > 0 && (
             <div className={styles.citations}>
-              <span>Cited actions:</span>
+              <span>{t("ask_cited_actions")}</span>
               {result.citations.map((cite, idx) => (
                 <span key={idx} className={styles.citationTag}>
                   {cite}
@@ -98,9 +99,7 @@ export function AskPanel({ household }: AskPanelProps) {
       )}
 
       <footer className={styles.disclaimer}>
-        <strong>Medical disclaimer:</strong> Saans provides exposure estimates for planning
-        and routine adaptation. It is not medical advice. For severe symptoms, acute respiratory
-        distress, or medical emergencies, seek immediate clinical care.
+        <strong>{t("ask_disclaimer_title")}</strong> {t("ask_disclaimer_body")}
       </footer>
     </section>
   );

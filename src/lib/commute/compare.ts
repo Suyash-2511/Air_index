@@ -1,0 +1,120 @@
+import { rawRateM3PerMinute } from "@/lib/exposure/breathing-rates";
+import { VEHICLE_CABIN_FACTOR } from "@/lib/exposure/infiltration";
+import type { TranslationKey } from "@/lib/i18n";
+import type { AgeBand } from "@/lib/types";
+
+/** Travel mode for urban daily commuting in India. */
+export type CommuteMode = "walk" | "cycle" | "bus" | "metro" | "auto" | "car";
+
+/** Evaluated travel mode with physiological dose and greenhouse gas footprint. */
+export interface CommuteModeComparison {
+  mode: CommuteMode;
+  label: string;
+  speedKmh: number;
+  durationMin: number;
+  inhaledMicrograms: number;
+  co2Grams: number;
+  isBestForLungs: boolean;
+  isBestForCity: boolean;
+  matchingInterventionId?: string | undefined;
+  labelKey: TranslationKey;
+}
+
+/** Options for the multimodal commute evaluation. */
+export interface CommuteCompareOptions {
+  distanceKm?: number | undefined;
+  outdoorPm25: number;
+  ageBand?: AgeBand | undefined;
+}
+
+/** Result containing ranked commute modes and standout recommendations. */
+export interface CommuteComparisonResult {
+  distanceKm: number;
+  modes: readonly CommuteModeComparison[];
+  bestForLungs: CommuteModeComparison;
+  bestForCity: CommuteModeComparison;
+}
+
+const MODE_KEYS: Record<CommuteMode, TranslationKey> = {
+  walk: "commute_mode_walk",
+  cycle: "commute_mode_cycle",
+  bus: "commute_mode_bus",
+  metro: "commute_mode_metro",
+  auto: "commute_mode_auto",
+  car: "commute_mode_car",
+};
+
+interface ModeSpec {
+  mode: CommuteMode;
+  label: string;
+  speedKmh: number;
+  intensity: "sedentary" | "moderate" | "high";
+  cabinInfiltration: number;
+  co2GramsPerKm: number;
+  matchingInterventionId?: string | undefined;
+}
+
+/**
+ * Empirical parameters for Indian urban transit modes:
+ * - Metro cabin factor 0.60: assumption for closed, air-conditioned coaches (same as the car cabin factor).
+ * - Car cabin factor: VEHICLE_CABIN_FACTOR from the dose engine, so both parts of the app agree.
+ * - Bus cabin factor 0.80: assumption for non-AC buses with open windows.
+ * - Auto factor 0.90: assumption for an open-sided three-wheeler in traffic.
+ * - CO2 factors: India GHG Program / ICCT India urban passenger transit factors per passenger-km.
+ */
+const MODE_SPECS: readonly ModeSpec[] = [
+  { mode: "walk", label: "Walking", speedKmh: 4.5, intensity: "moderate", cabinInfiltration: 1.0, co2GramsPerKm: 0 },
+  { mode: "cycle", label: "Cycling", speedKmh: 15, intensity: "high", cabinInfiltration: 1.0, co2GramsPerKm: 0 },
+  { mode: "bus", label: "City bus", speedKmh: 16, intensity: "sedentary", cabinInfiltration: 0.8, co2GramsPerKm: 28, matchingInterventionId: "public_transport_instead_of_cycling" },
+  { mode: "metro", label: "Metro train", speedKmh: 32, intensity: "sedentary", cabinInfiltration: 0.6, co2GramsPerKm: 16, matchingInterventionId: "public_transport_instead_of_cycling" },
+  { mode: "auto", label: "Auto-rickshaw", speedKmh: 22, intensity: "sedentary", cabinInfiltration: 0.9, co2GramsPerKm: 58 },
+  { mode: "car", label: "Private car (solo)", speedKmh: 24, intensity: "sedentary", cabinInfiltration: VEHICLE_CABIN_FACTOR, co2GramsPerKm: 142 },
+];
+
+/**
+ * Compares commute modes for personal inhaled PM2.5 and trip CO2 emissions.
+ */
+export function compareCommuteModes({
+  distanceKm = 8,
+  outdoorPm25,
+  ageBand = "adult",
+}: CommuteCompareOptions): CommuteComparisonResult {
+  const safeDistance = Math.max(0.5, Math.min(50, distanceKm));
+
+  const list: CommuteModeComparison[] = MODE_SPECS.map((spec) => {
+    const durationMin = Math.max(1, Math.round((safeDistance / spec.speedKmh) * 60));
+    const breathingRate = rawRateM3PerMinute(ageBand, spec.intensity);
+    const inhaledMicrograms = Math.round(outdoorPm25 * spec.cabinInfiltration * breathingRate * durationMin * 10) / 10;
+    const co2Grams = Math.round(safeDistance * spec.co2GramsPerKm);
+
+    return {
+      mode: spec.mode,
+      label: spec.label,
+      speedKmh: spec.speedKmh,
+      durationMin,
+      inhaledMicrograms,
+      co2Grams,
+      isBestForLungs: false,
+      isBestForCity: false,
+      matchingInterventionId: spec.matchingInterventionId,
+      labelKey: MODE_KEYS[spec.mode],
+    };
+  });
+
+  list.sort((a, b) => a.inhaledMicrograms - b.inhaledMicrograms);
+
+  const bestForLungs = list[0]!;
+  bestForLungs.isBestForLungs = true;
+
+  // Best for city is lowest CO2; for motorized/long transit, metro is cleanest
+  const sortedByCo2 = [...list].sort((a, b) => a.co2Grams - b.co2Grams || a.inhaledMicrograms - b.inhaledMicrograms);
+  const bestForCity = sortedByCo2[0]!;
+  bestForCity.isBestForCity = true;
+
+  return {
+    distanceKm: safeDistance,
+    modes: list,
+    bestForLungs,
+    bestForCity,
+  };
+}

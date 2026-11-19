@@ -24,7 +24,13 @@ export const askResponseSchema: Record<string, unknown> = {
 };
 
 /** Deterministic Q&A fixture for demo mode. */
-export function getDemoAskFixture(question: string, plan: Plan, household: Household): AskResult {
+export function getDemoAskFixture(
+  question: string,
+  plan: Plan,
+  household: Household,
+  locale: "en" | "hi" = "en",
+): AskResult {
+  const isHi = locale === "hi";
   const lower = question.toLowerCase();
 
   const isOffPlan =
@@ -38,7 +44,9 @@ export function getDemoAskFixture(question: string, plan: Plan, household: House
 
   if (isOffPlan) {
     return {
-      answer: "This question cannot be answered from your household's air-quality exposure plan.",
+      answer: isHi
+        ? "यह प्रश्न आपके परिवार की वायु-गुणवत्ता योजना से संबंधित नहीं है।"
+        : "This question cannot be answered from your household's air-quality exposure plan.",
       citedInterventionIds: [],
       answerable: false,
     };
@@ -51,8 +59,12 @@ export function getDemoAskFixture(question: string, plan: Plan, household: House
     const isMotherIndoors = mother ? mother.windows.every((w) => w.setting === "indoor") : false;
 
     const answer = isMotherIndoors
-      ? "The plan does not recommend a mask for Mother because her daily schedule is entirely indoors; outdoor mask protection is recommended for family members who commute."
-      : "Yes, using a mask during outdoor exposure reduces inhaled PM2.5 significantly.";
+      ? (isHi
+          ? "योजना में माँ के लिए मास्क की सिफारिश नहीं की गई है क्योंकि वे पूरे दिन घर के अंदर रहती हैं; यात्रा करने वाले सदस्यों के लिए बाहरी मास्क की सिफारिश की जाती है।"
+          : "The plan does not recommend a mask for Mother because her daily schedule is entirely indoors; outdoor mask protection is recommended for family members who commute.")
+      : (isHi
+          ? "हाँ, बाहर जाने पर मास्क लगाने से PM2.5 कणों की मात्रा में काफी कमी आती है।"
+          : "Yes, using a mask during outdoor exposure reduces inhaled PM2.5 significantly.");
 
     return {
       answer,
@@ -64,8 +76,12 @@ export function getDemoAskFixture(question: string, plan: Plan, household: House
   const top = plan.ranked[0];
   return {
     answer: top
-      ? `Based on your household's plan, ${getInterventionTitle(top.id)} is your highest-impact recommendation.`
-      : "Your plan currently has no active intervention recommendations to answer this query.",
+      ? (isHi
+          ? `आपके परिवार की योजना के अनुसार, ${getInterventionTitle(top.id)} सबसे प्रभावशाली उपाय है।`
+          : `Based on your household's plan, ${getInterventionTitle(top.id)} is your highest-impact recommendation.`)
+      : (isHi
+          ? "इस प्रश्न का उत्तर देने के लिए आपकी योजना में कोई सक्रिय उपाय नहीं है।"
+          : "Your plan currently has no active intervention recommendations to answer this query."),
     citedInterventionIds: top ? [top.id] : [],
     answerable: top !== undefined,
   };
@@ -81,7 +97,12 @@ Rules:
 ${INJECTION_GUARD_SYSTEM_INSTRUCTION}`;
 
 /** Answers a user query strictly using the household's computed exposure plan without exposing internal IDs. */
-export async function askQuestion(question: string, plan: Plan, household: Household): Promise<AskResult> {
+export async function askQuestion(
+  question: string,
+  plan: Plan,
+  household: Household,
+  locale: "en" | "hi" = "en",
+): Promise<AskResult> {
   const guardedQuestion = guardUserInput(question);
 
   const memberIdToLabel = new Map(household.members.map((m) => [m.id, m.label]));
@@ -103,8 +124,12 @@ export async function askQuestion(question: string, plan: Plan, household: House
     })),
   };
 
+  const systemPrompt = locale === "hi"
+    ? `${ASK_SYSTEM_PROMPT}\n5. Language: Hindi (Devanagari script). Provide the answer in natural Hindi.`
+    : ASK_SYSTEM_PROMPT;
+
   const response = await generateStructured<{ answer: string; citedInterventions: string[]; answerable: boolean }>({
-    system: ASK_SYSTEM_PROMPT,
+    system: systemPrompt,
     contents: `Computed Plan Context:\n${JSON.stringify(planContext, null, 2)}\n\nUser Question:\n${guardedQuestion}`,
     responseSchema: askResponseSchema,
     zodSchema: z.object({
@@ -113,7 +138,7 @@ export async function askQuestion(question: string, plan: Plan, household: House
       answerable: z.boolean(),
     }),
     demoFixture: () => {
-      const demo = getDemoAskFixture(question, plan, household);
+      const demo = getDemoAskFixture(question, plan, household, locale);
       return {
         answer: demo.answer,
         citedInterventions: demo.citedInterventionIds.map((id) => getInterventionTitle(id)),

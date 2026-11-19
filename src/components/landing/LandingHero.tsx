@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useLocale } from "@/hooks/useLocale";
 import { IconArrowRight } from "../ui/icons";
 import styles from "./LandingHero.module.css";
 import { StationReading } from "./StationReading";
@@ -16,54 +17,53 @@ export interface LandingHeroProps {
   aqi?: { value: number; category: string } | undefined;
 }
 
-const STEPS = [
-  { n: "01", text: "Choose your area" },
-  { n: "02", text: "Describe who lives at home" },
-  { n: "03", text: "Switch on changes and watch the dose fall" },
-] as const;
-
 /**
  * Landing introduction, set as the front page of a bulletin: a kicker, the headline,
  * today's station reading, and the two ways in.
  */
 export function LandingHero({ onPlanHome, onSampleFamily, livePm25, cityName = "New Delhi", isLive = false, aqi }: LandingHeroProps) {
+  const { t } = useLocale();
+
+  const steps = [
+    { n: "01", text: t("hero_step1") },
+    { n: "02", text: t("hero_step2") },
+    { n: "03", text: t("hero_step3") },
+  ] as const;
+
   return (
     <section className={styles.heroSection} aria-labelledby="landing-headline">
       <div className={styles.content}>
-        <p className={styles.kicker}>Today&apos;s field note</p>
+        <p className={styles.kicker}>{t("hero_kicker")}</p>
 
         <h2 id="landing-headline" className={styles.headline}>
           <span className={styles.maskLine}>
-            <span className={styles.line1}>What your family</span>
+            <span className={styles.line1}>{t("hero_line1")}</span>
           </span>{" "}
           <span className={styles.maskLine}>
             <span className={styles.line2}>
-              <em className={styles.italic}>actually</em> breathes today.
+              <em className={styles.italic}>{t("hero_line2_italic")}</em> {t("hero_line2_rest")}
             </span>
           </span>
         </h2>
 
-        <p className={styles.sentence}>
-          Saans turns today&apos;s air forecast into a plan for your household, and shows exactly how much each
-          change cuts what you inhale.
-        </p>
+        <p className={styles.sentence}>{t("hero_sentence")}</p>
 
         <div className={styles.actionRow}>
           <button type="button" onClick={onPlanHome} className={styles.buttonPrimary}>
-            <span>Plan today for my home</span>
+            <span>{t("hero_plan_home")}</span>
             <span className={styles.arrow} aria-hidden="true">
               <IconArrowRight size={18} />
             </span>
           </button>
           <button type="button" onClick={onSampleFamily} className={styles.buttonSecondary}>
-            See a sample family
+            {t("hero_sample_family")}
           </button>
         </div>
 
         <StationReading livePm25={livePm25} cityName={cityName} isLive={isLive} aqi={aqi} />
 
-        <ol className={styles.steps} aria-label="How it works">
-          {STEPS.map((s, i) => (
+        <ol className={styles.steps} aria-label={t("hero_how_it_works")}>
+          {steps.map((s, i) => (
             <li key={s.n} className={styles.step} style={{ "--i": i } as CSSProperties}>
               <span className={styles.stepNumber} aria-hidden="true">
                 {s.n}

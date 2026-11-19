@@ -14,6 +14,7 @@ const MAX_BODY_BYTES = 8192;
 const askRequestSchema = z.object({
   question: z.string().min(2).max(500),
   household: householdSchema,
+  locale: z.enum(["en", "hi"]).default("en"),
 });
 
 /** Question-answering endpoint grounded exclusively in the household's computed exposure plan. */
@@ -34,7 +35,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    const { question, household } = parseResult.data;
+    const { question, household, locale } = parseResult.data;
 
     const provider = getAirProvider();
     const current = await provider.current(household.location);
@@ -44,7 +45,7 @@ export async function POST(request: Request): Promise<Response> {
     const dayForecastMap: DayForecast = new Map(forecast.map((f) => [f.hour, f.pm25]));
     const computedPlan = buildPlan(household, dayForecastMap);
 
-    const result = await askQuestion(question, computedPlan, household);
+    const result = await askQuestion(question, computedPlan, household, locale);
     const citations = result.citedInterventionIds.map((id) => getInterventionTitle(id));
 
     return NextResponse.json({ ...result, citations }, { status: 200 });

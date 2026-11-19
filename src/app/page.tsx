@@ -8,6 +8,7 @@ import { LandingHero, Masthead } from "@/components/landing";
 import { PlanStep, StepNav, WhereStep, WhoStep, type StepNumber } from "@/components/steps";
 import { getDefaultHousehold, getSampleHousehold } from "@/data/sampleHousehold";
 import { useBrowserLocation } from "@/hooks/useBrowserLocation";
+import { useLocale } from "@/hooks/useLocale";
 import { StaticFallback } from "@/components/scene/StaticFallback";
 import type { Household, Location } from "@/lib/types";
 import styles from "./page.module.css";
@@ -28,6 +29,7 @@ const DELHI_LOCATION: Location = {
 
 /** Coordinator for Saans: light theme by default, with the Three.js Earth centrepiece. */
 export default function HomePage() {
+  const { locale, t } = useLocale();
   const [step, setStep] = useState<0 | StepNumber>(0);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [location, setLocation] = useState<Location | undefined>();
@@ -85,7 +87,7 @@ export default function HomePage() {
     setLoading(true);
     setError(undefined);
     try {
-      const data = await computePlan(currentHousehold);
+      const data = await computePlan(currentHousehold, locale);
       setPlanData(data);
       setDoseDensity(1.0);
       setStep(3);
@@ -122,7 +124,7 @@ export default function HomePage() {
             {loading && (
               <div className={styles.loadingBanner} aria-live="polite" aria-busy="true">
                 <div className={styles.spinner} aria-hidden="true" />
-                <span>Calculating daily inhaled doses and ranking protective changes...</span>
+                <span>{t("loading_calculating_plan")}</span>
               </div>
             )}
 
